@@ -23,8 +23,11 @@ class SheetsManager:
             if not creds_json:
                 raise ValueError("GOOGLE_CREDENTIALS_JSON not set")
             
+            logger.info(f"Got credentials JSON, length: {len(creds_json)}")
+            
             # Парсим JSON
             creds_dict = json.loads(creds_json)
+            logger.info("Credentials parsed successfully")
             
             scope = [
                 'https://spreadsheets.google.com/feeds',
@@ -33,6 +36,7 @@ class SheetsManager:
             
             creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
             self.client = gspread.authorize(creds)
+            logger.info("Google API client authorized")
             
             # Открываем таблицу с email
             spreadsheet = self.client.open_by_key(config.GOOGLE_SHEET_EMAILS_ID)
@@ -41,7 +45,9 @@ class SheetsManager:
             logger.info("✅ Connected to Google Sheets")
             
         except Exception as e:
-            logger.error(f"❌ Failed to connect to Google Sheets: {e}")
+            logger.error(f"❌ Failed to connect to Google Sheets: {type(e).__name__}: {str(e)}")
+            import traceback
+            logger.error(traceback.format_exc())
             raise
     
     def check_email_exists(self, email: str) -> bool:
