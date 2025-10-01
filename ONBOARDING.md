@@ -216,7 +216,7 @@ UndefinedColumnError: column "telegram_id" does not exist
 
 - **Репозиторий**: https://github.com/vostoklov/youtravel-yandex-bot
 - **Railway**: https://railway.app/project/youtravel-yandex-bot
-- **Telegram Bot**: @youtravel_b2a_smm_bot
+- **Telegram Bot**: @YouTravelYandexBot
 - **Support**: @vostoklov
 
 ## 📚 Дополнительная документация

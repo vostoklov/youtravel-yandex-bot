@@ -11,7 +11,7 @@ Telegram-бот для регистрации B2B агентств в Яндек
 4. **Запустите**: `python3 bot.py`
 
 ### Для пользователей
-- **Telegram**: [@youtravel_b2a_smm_bot](https://t.me/youtravel_b2a_smm_bot)
+- **Telegram**: [@YouTravelYandexBot](https://t.me/YouTravelYandexBot)
 - **Команды**: `/start`, `/status`, `/help`, `/reset`
 
 ## 📊 Статус проекта

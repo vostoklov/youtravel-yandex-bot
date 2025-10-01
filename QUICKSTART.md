@@ -2,7 +2,7 @@
 
 ## ✅ Что уже готово
 
-- ✅ Telegram бот создан: `@youtravel_b2a_smm_bot`
+- ✅ Telegram бот создан: `@YouTravelYandexBot`
 - ✅ Google Sheets таблицы созданы и заполнены тестовыми данными
 - ✅ Весь код бота написан и готов к деплою
 - ✅ Service Account настроен
@@ -55,7 +55,7 @@ git push -u origin main
 
 ### 5️⃣ Проверить (1 минута)
 
-1. Открой Telegram → найди `@youtravel_b2a_smm_bot`
+1. Открой Telegram → найди `@YouTravelYandexBot`
 2. Отправь `/start`
 3. Проверь что бот отвечает
 
