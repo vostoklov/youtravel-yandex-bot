@@ -34,8 +34,8 @@ class SheetsManager:
             creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
             self.client = gspread.authorize(creds)
             
-            # Открываем таблицу
-            spreadsheet = self.client.open_by_key(config.GOOGLE_SHEET_ID)
+            # Открываем таблицу с email
+            spreadsheet = self.client.open_by_key(config.GOOGLE_SHEET_EMAILS_ID)
             self.worksheet = spreadsheet.sheet1
             
             logger.info("✅ Connected to Google Sheets")
