@@ -1,11 +1,11 @@
-"""
-Работа с Google Sheets
-"""
+"""Работа с Google Sheets"""
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 import config
 import logging
 from typing import Optional
+import json
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -23,9 +23,20 @@ class SheetsManager:
         ]
         
         try:
-            creds = ServiceAccountCredentials.from_json_keyfile_name(
-                config.GOOGLE_CREDENTIALS_JSON, scope
-            )
+            # Проверяем, является ли это путём к файлу или JSON строкой
+            creds_str = config.GOOGLE_CREDENTIALS_JSON
+            if os.path.exists(creds_str):
+                # Это путь к файлу
+                creds = ServiceAccountCredentials.from_json_keyfile_name(
+                    creds_str, scope
+                )
+            else:
+                # Это JSON строка
+                creds_dict = json.loads(creds_str)
+                creds = ServiceAccountCredentials.from_json_keyfile_dict(
+                    creds_dict, scope
+                )
+            
             self.client = gspread.authorize(creds)
             
             # Открываем таблицы
