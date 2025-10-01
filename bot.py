@@ -186,7 +186,7 @@ async def cmd_reset(message: Message, state: FSMContext):
         
         async with db.pool.acquire() as conn:
             result = await conn.execute(
-                "DELETE FROM users WHERE telegram_id = $1",
+                "DELETE FROM users WHERE user_id = $1",
                 user_id
             )
         
