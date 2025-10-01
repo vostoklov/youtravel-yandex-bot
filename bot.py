@@ -137,7 +137,8 @@ async def cmd_help(message: Message):
         "/start - Начать регистрацию\n"
         "/status - Проверить статус регистрации\n"
         "/menu - Показать главное меню\n"
-        "/help - Показать эту справку\n\n"
+        "/help - Показать эту справку\n"
+        "/reset - Сбросить регистрацию (для повторного тестирования)\n\n"
         "<b>Процесс регистрации:</b>\n"
         "1️⃣ Введите email от YouTravel\n"
         "2️⃣ Зарегистрируйтесь в Яндекс.Путешествиях\n"
@@ -158,6 +159,40 @@ async def cmd_support(message: Message):
         reply_markup=get_main_menu(),
         parse_mode="HTML"
     )
+
+@dp.message(Command("reset"))
+async def cmd_reset(message: Message, state: FSMContext):
+    """Сброс регистрации для повторного тестирования (DEV)"""
+    user_id = message.from_user.id
+    
+    # Удаляем пользователя из базы
+    try:
+        async with db.pool.acquire() as conn:
+            result = await conn.execute(
+                "DELETE FROM users WHERE telegram_id = $1",
+                user_id
+            )
+        
+        # Очищаем состояние FSM
+        await state.clear()
+        
+        await message.answer(
+            "🔄 <b>Регистрация сброшена!</b>\n\n"
+            "Теперь вы можете начать заново.\n"
+            "Отправьте /start для новой регистрации.",
+            reply_markup=remove_keyboard(),
+            parse_mode="HTML"
+        )
+        
+        logger.info(f"User {user_id} reset their registration")
+        
+    except Exception as e:
+        logger.error(f"Error resetting user {user_id}: {e}")
+        await message.answer(
+            "❌ Ошибка при сбросе регистрации.\n"
+            "Попробуйте ещё раз или свяжитесь с поддержкой.",
+            reply_markup=get_main_menu()
+        )
 
 # ============================================================================
 # РЕГИСТРАЦИЯ - ШАГ 1: EMAIL
