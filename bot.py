@@ -200,7 +200,7 @@ async def process_email(message: Message, state: FSMContext):
         f"✅ Email подтверждён!\n\n"
         f"📋 <b>Следующий шаг:</b>\n"
         f"Зарегистрируйтесь в B2B Яндекс.Путешествий:\n"
-        f"🔗 https://travel.yandex.ru/b2b/registration\n\n"
+        f"🔗 https://passport.yandex.ru/auth/reg/org?origin=travel_unmanaged&retpath=https://id.yandex.ru/org/members\n\n"
         f"После регистрации введите <b>ИНН вашей компании</b> (10 или 12 цифр):",
         parse_mode="HTML"
     )
