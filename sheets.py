@@ -18,36 +18,124 @@ class SheetsManager:
     def connect(self):
         """Подключение к Google Sheets"""
         try:
-            # Читаем JSON напрямую из переменной окружения
-            creds_json = os.getenv('GOOGLE_CREDENTIALS_JSON')
-            if not creds_json:
+            logger.info("=" * 60)
+            logger.info("Starting Google Sheets connection...")
+            logger.info("=" * 60)
+            
+            # Шаг 1: Читаем JSON из переменной окружения или файла
+            logger.info("Step 1: Reading GOOGLE_CREDENTIALS_JSON from environment")
+            creds_json_or_path = os.getenv('GOOGLE_CREDENTIALS_JSON')
+            
+            if not creds_json_or_path:
+                logger.error("❌ GOOGLE_CREDENTIALS_JSON environment variable is not set!")
                 raise ValueError("GOOGLE_CREDENTIALS_JSON not set")
             
-            logger.info(f"Got credentials JSON, length: {len(creds_json)}")
+            logger.info(f"✓ Got credentials value, length: {len(creds_json_or_path)} characters")
             
-            # Парсим JSON
-            creds_dict = json.loads(creds_json)
-            logger.info("Credentials parsed successfully")
+            # Шаг 2: Определяем - это путь к файлу или сам JSON?
+            logger.info("Step 2: Determining if it's a file path or JSON string")
             
+            # Если значение короткое и не начинается с '{', возможно это путь к файлу
+            if len(creds_json_or_path) < 500 and not creds_json_or_path.strip().startswith('{'):
+                # Вероятно, это путь к файлу
+                logger.info(f"  Looks like a file path: {creds_json_or_path}")
+                
+                if not os.path.exists(creds_json_or_path):
+                    logger.error(f"❌ Credentials file not found: {creds_json_or_path}")
+                    raise FileNotFoundError(f"Credentials file not found: {creds_json_or_path}")
+                
+                logger.info(f"  Reading credentials from file: {creds_json_or_path}")
+                with open(creds_json_or_path, 'r') as f:
+                    creds_json = f.read()
+                logger.info(f"✓ File read successfully, length: {len(creds_json)} characters")
+            else:
+                # Это сам JSON
+                logger.info("  Detected as JSON string")
+                creds_json = creds_json_or_path
+                logger.info(f"  First 50 chars: {creds_json[:50]}...")
+                logger.info(f"  Last 50 chars: ...{creds_json[-50:]}")
+            
+            # Шаг 3: Парсим JSON
+            logger.info("Step 3: Parsing JSON credentials")
+            try:
+                creds_dict = json.loads(creds_json)
+                logger.info("✓ JSON parsed successfully")
+            except json.JSONDecodeError as je:
+                logger.error(f"❌ JSON parsing failed at position {je.pos}")
+                logger.error(f"   Error: {je.msg}")
+                logger.error(f"   Context: ...{creds_json[max(0, je.pos-50):je.pos+50]}...")
+                raise
+            
+            # Шаг 4: Проверяем наличие обязательных полей
+            logger.info("Step 4: Validating credentials structure")
+            required_fields = ['type', 'project_id', 'private_key_id', 'private_key', 'client_email']
+            missing_fields = [field for field in required_fields if field not in creds_dict]
+            
+            if missing_fields:
+                logger.error(f"❌ Missing required fields: {missing_fields}")
+                logger.error(f"   Available fields: {list(creds_dict.keys())}")
+                raise ValueError(f"Missing required credential fields: {missing_fields}")
+            
+            logger.info(f"✓ All required fields present")
+            logger.info(f"  Service account email: {creds_dict.get('client_email')}")
+            logger.info(f"  Project ID: {creds_dict.get('project_id')}")
+            
+            # Шаг 5: Создаем credentials
+            logger.info("Step 5: Creating ServiceAccountCredentials")
             scope = [
                 'https://spreadsheets.google.com/feeds',
                 'https://www.googleapis.com/auth/drive'
             ]
             
-            creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
-            self.client = gspread.authorize(creds)
-            logger.info("Google API client authorized")
+            try:
+                creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
+                logger.info("✓ Service account credentials created")
+            except Exception as cred_error:
+                logger.error(f"❌ Failed to create credentials: {type(cred_error).__name__}: {cred_error}")
+                raise
             
-            # Открываем таблицу с email
-            spreadsheet = self.client.open_by_key(config.GOOGLE_SHEET_EMAILS_ID)
-            self.worksheet = spreadsheet.sheet1
+            # Шаг 6: Авторизуем клиент
+            logger.info("Step 6: Authorizing gspread client")
+            try:
+                self.client = gspread.authorize(creds)
+                logger.info("✓ Gspread client authorized")
+            except Exception as auth_error:
+                logger.error(f"❌ Authorization failed: {type(auth_error).__name__}: {auth_error}")
+                raise
             
-            logger.info("✅ Connected to Google Sheets")
+            # Шаг 7: Открываем таблицу с email
+            logger.info(f"Step 7: Opening spreadsheet with ID: {config.GOOGLE_SHEET_EMAILS_ID}")
+            try:
+                spreadsheet = self.client.open_by_key(config.GOOGLE_SHEET_EMAILS_ID)
+                logger.info(f"✓ Spreadsheet opened: {spreadsheet.title}")
+            except Exception as sheet_error:
+                logger.error(f"❌ Failed to open spreadsheet: {type(sheet_error).__name__}: {sheet_error}")
+                logger.error(f"   Make sure the service account {creds_dict.get('client_email')} has access to the sheet")
+                raise
+            
+            # Шаг 8: Получаем первый worksheet
+            logger.info("Step 8: Getting first worksheet")
+            try:
+                self.worksheet = spreadsheet.sheet1
+                logger.info(f"✓ Worksheet loaded: {self.worksheet.title}")
+            except Exception as ws_error:
+                logger.error(f"❌ Failed to get worksheet: {type(ws_error).__name__}: {ws_error}")
+                raise
+            
+            logger.info("=" * 60)
+            logger.info("✅ Successfully connected to Google Sheets!")
+            logger.info("=" * 60)
             
         except Exception as e:
-            logger.error(f"❌ Failed to connect to Google Sheets: {type(e).__name__}: {str(e)}")
+            logger.error("=" * 60)
+            logger.error(f"❌ FAILED to connect to Google Sheets")
+            logger.error(f"   Error type: {type(e).__name__}")
+            logger.error(f"   Error message: {str(e)}")
+            logger.error("=" * 60)
             import traceback
+            logger.error("Full traceback:")
             logger.error(traceback.format_exc())
+            logger.error("=" * 60)
             raise
     
     def check_email_exists(self, email: str) -> bool:
