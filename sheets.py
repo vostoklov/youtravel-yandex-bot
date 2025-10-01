@@ -149,19 +149,34 @@ class SheetsManager:
             return False
     
     def get_available_promo(self) -> str:
-        """Получить доступный промокод из таблицы"""
+        """Получить доступный промокод из таблицы промокодов"""
         try:
-            # Получаем все промокоды из колонки B (пропускаем заголовок)
-            promo_codes = self.worksheet.col_values(2)[1:]
+            logger.info("Getting available promo code from promos sheet...")
+            
+            # Открываем таблицу с промокодами (не emails!)
+            promo_sheet = self.client.open_by_key(config.GOOGLE_SHEET_PROMOS_ID)
+            promo_worksheet = promo_sheet.sheet1
+            
+            logger.info(f"Opened promo sheet: {promo_sheet.title}")
+            
+            # Получаем все промокоды из колонки A (пропускаем заголовок)
+            promo_codes = promo_worksheet.col_values(1)[1:]
+            
+            logger.info(f"Found {len(promo_codes)} promo codes")
             
             # Возвращаем первый непустой промокод
             for promo in promo_codes:
                 if promo and promo.strip():
+                    logger.info(f"Returning promo code: {promo.strip()}")
                     return promo.strip()
             
+            logger.warning("No available promo codes found!")
             return None
+            
         except Exception as e:
-            logger.error(f"Error getting promo code: {e}")
+            logger.error(f"Error getting promo code: {type(e).__name__}: {e}")
+            import traceback
+            logger.error(traceback.format_exc())
             return None
 
 
