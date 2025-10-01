@@ -165,16 +165,36 @@ async def cmd_reset(message: Message, state: FSMContext):
     """Сброс регистрации для повторного тестирования (DEV)"""
     user_id = message.from_user.id
     
+    logger.info(f"User {user_id} requested reset")
+    
     # Удаляем пользователя из базы
     try:
+        # Проверяем существует ли пользователь
+        user = await db.get_user(user_id)
+        
+        if not user:
+            logger.info(f"User {user_id} not found in database (nothing to reset)")
+            await message.answer(
+                "ℹ️ У вас нет активной регистрации.\n\n"
+                "Отправьте /start чтобы начать регистрацию.",
+                reply_markup=remove_keyboard(),
+                parse_mode="HTML"
+            )
+            return
+        
+        logger.info(f"Deleting user {user_id} from database...")
+        
         async with db.pool.acquire() as conn:
             result = await conn.execute(
                 "DELETE FROM users WHERE telegram_id = $1",
                 user_id
             )
         
+        logger.info(f"✓ User {user_id} deleted: {result}")
+        
         # Очищаем состояние FSM
         await state.clear()
+        logger.info(f"✓ FSM state cleared for user {user_id}")
         
         await message.answer(
             "🔄 <b>Регистрация сброшена!</b>\n\n"
@@ -184,13 +204,17 @@ async def cmd_reset(message: Message, state: FSMContext):
             parse_mode="HTML"
         )
         
-        logger.info(f"User {user_id} reset their registration")
+        logger.info(f"✅ User {user_id} reset successful")
         
     except Exception as e:
-        logger.error(f"Error resetting user {user_id}: {e}")
+        logger.error(f"❌ Error resetting user {user_id}: {type(e).__name__}: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
+        
         await message.answer(
-            "❌ Ошибка при сбросе регистрации.\n"
-            "Попробуйте ещё раз или свяжитесь с поддержкой.",
+            f"❌ Ошибка при сбросе регистрации.\n\n"
+            f"Ошибка: {type(e).__name__}\n"
+            f"Попробуйте ещё раз или свяжитесь с @{config.SUPPORT_USERNAME}",
             reply_markup=get_main_menu()
         )
 
