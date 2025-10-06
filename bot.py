@@ -16,6 +16,7 @@ from sheets import sheets
 from keyboards import get_main_menu, get_confirmation_keyboard, remove_keyboard
 from utils import validate_email, normalize_email, validate_inn, normalize_inn, mask_email, mask_inn
 from monitoring import monitoring
+from reminders import reminders
 
 # Logging
 logging.basicConfig(
@@ -64,7 +65,8 @@ async def cmd_admin(message: Message):
         f"• /admin_users - список пользователей\n"
         f"• /admin_reset user_id - сбросить пользователя\n"
         f"• /admin_promos - проверить промокоды\n"
-        f"• /admin_monitor - мониторинг системы",
+        f"• /admin_monitor - мониторинг системы\n"
+        f"• /admin_reminders - управление напоминаниями",
         parse_mode="HTML"
     )
 
@@ -222,6 +224,66 @@ async def cmd_admin_monitor(message: Message):
     except Exception as e:
         await message.answer(f"❌ Ошибка мониторинга: {e}")
 
+@dp.message(Command("admin_reminders"))
+async def cmd_admin_reminders(message: Message):
+    """Управление напоминаниями"""
+    user_id = message.from_user.id
+    
+    if not is_admin(user_id):
+        await message.answer("❌ У вас нет прав администратора.")
+        return
+    
+    try:
+        # Получаем статистику напоминаний
+        async with db.pool.acquire() as conn:
+            # Создаем таблицу если не существует
+            await conn.execute("""
+                CREATE TABLE IF NOT EXISTS user_reminders (
+                    user_id BIGINT,
+                    reminder_type TEXT,
+                    sent_at TIMESTAMP DEFAULT NOW(),
+                    PRIMARY KEY (user_id, reminder_type)
+                )
+            """)
+            
+            # Статистика напоминаний
+            total_reminders = await conn.fetchval("SELECT COUNT(*) FROM user_reminders")
+            incomplete_users = await conn.fetchval("""
+                SELECT COUNT(*) FROM users WHERE completed_at IS NULL
+            """)
+            
+            # Последние напоминания
+            recent_reminders = await conn.fetch("""
+                SELECT user_id, reminder_type, sent_at 
+                FROM user_reminders 
+                ORDER BY sent_at DESC 
+                LIMIT 5
+            """)
+        
+        report = f"🔔 <b>Система напоминаний</b>\n\n"
+        report += f"📊 <b>Статистика:</b>\n"
+        report += f"• Всего отправлено: {total_reminders}\n"
+        report += f"• Незавершенных регистраций: {incomplete_users}\n\n"
+        
+        if recent_reminders:
+            report += f"📝 <b>Последние напоминания:</b>\n"
+            for reminder in recent_reminders:
+                date = reminder['sent_at'].strftime('%d.%m %H:%M')
+                report += f"• {reminder['reminder_type']} → {reminder['user_id']} ({date})\n"
+        else:
+            report += f"📝 <b>Напоминания:</b> Пока не отправлялись\n"
+        
+        report += f"\n⏰ <b>Интервалы:</b>\n"
+        report += f"• Через 1 час после начала\n"
+        report += f"• Через 24 часа\n"
+        report += f"• Через 3 дня\n"
+        report += f"• Напоминание о промокоде через 7 дней\n"
+        
+        await message.answer(report, parse_mode="HTML")
+        
+    except Exception as e:
+        await message.answer(f"❌ Ошибка получения статистики напоминаний: {e}")
+
 # ============================================================================
 # КОМАНДЫ И МЕНЮ
 # ============================================================================
@@ -250,6 +312,9 @@ async def cmd_start(message: Message, state: FSMContext):
     
     # Новый пользователь или незавершённая регистрация
     await db.create_user(user_id, username)
+    
+    # Уведомляем админов о новом пользователе
+    await reminders.send_new_user_notification(user_id, "Новый пользователь")
     
     await message.answer(
         "👋 Привет! Это бот для регистрации в <b>B2B Яндекс.Путешествий</b>.\n\n"
@@ -570,6 +635,9 @@ async def confirm_registration(callback: CallbackQuery, state: FSMContext):
         reply_markup=get_main_menu()
     )
     
+    # Уведомляем админов о завершенной регистрации
+    await reminders.send_completion_notification(user_id, user['email'], promo_code)
+    
     await callback.answer("✅ Регистрация завершена!")
     logger.info(f"User {user_id} completed registration with promo: {promo_code}")
 
@@ -630,6 +698,9 @@ async def main():
         
         # Запускаем мониторинг в фоне
         monitoring_task = asyncio.create_task(monitoring.start_monitoring(bot))
+        
+        # Запускаем систему напоминаний в фоне
+        reminders_task = asyncio.create_task(reminders.start_reminders(bot))
         
         # Запускаем polling
         await dp.start_polling(bot)
