@@ -35,19 +35,6 @@ bot = Bot(token=config.BOT_TOKEN)
 dp = Dispatcher()
 
 # ============================================================================
-# ОТЛАДКА
-# ============================================================================
-
-@dp.message()
-async def debug_handler(message: Message):
-    """Отладочный обработчик для всех сообщений"""
-    logger.info(f"🔍 Debug: Received message: '{message.text}' from user {message.from_user.id}")
-    if message.text and message.text.startswith('/admin'):
-        logger.info(f"🔍 Debug: Admin command detected: '{message.text}'")
-    # Не блокируем обработку другими обработчиками
-    return
-
-# ============================================================================
 # КОМАНДЫ И МЕНЮ
 # ============================================================================
 
@@ -433,6 +420,10 @@ async def cmd_admin(message: Message):
     logger.info("🔧 Admin command received!")
     user_id = message.from_user.id
     logger.info(f"🔧 User ID: {user_id}")
+    
+    # Простой ответ для тестирования
+    await message.answer("🔧 Админская панель работает!")
+    return
     
     if not is_admin(user_id):
         await message.answer("❌ У вас нет прав администратора.")
