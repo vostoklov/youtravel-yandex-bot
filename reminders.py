@@ -106,7 +106,12 @@ class ReminderSystem:
                 logger.info(f"Reminder {reminder_type} sent to user {user_id}")
                 
         except Exception as e:
-            logger.error(f"Error sending reminder to user {user_id}: {e}")
+            if "chat not found" in str(e) or "bot was blocked" in str(e):
+                logger.warning(f"User {user_id} blocked the bot or chat not found - skipping reminder")
+                # Отмечаем напоминание как отправленное, чтобы не спамить
+                await self.mark_reminder_sent(user_id, reminder_type)
+            else:
+                logger.error(f"Error sending reminder to user {user_id}: {e}")
     
     def get_reminder_message(self, reminder_type: str, step: str) -> str:
         """Получаем текст напоминания"""
@@ -209,13 +214,15 @@ class ReminderSystem:
             seven_days_ago = datetime.now() - timedelta(days=7)
             
             async with db.pool.acquire() as conn:
+                # Проверяем, кому еще не отправляли напоминание о промокоде
                 rows = await conn.fetch("""
-                    SELECT user_id, promo_code, completed_at
-                    FROM users 
-                    WHERE completed_at IS NOT NULL 
-                    AND promo_code IS NOT NULL
-                    AND completed_at <= $1
-                    AND reminder_sent = FALSE
+                    SELECT u.user_id, u.promo_code, u.completed_at
+                    FROM users u
+                    LEFT JOIN user_reminders ur ON u.user_id = ur.user_id AND ur.reminder_type = 'promo_reminder'
+                    WHERE u.completed_at IS NOT NULL 
+                    AND u.promo_code IS NOT NULL
+                    AND u.completed_at <= $1
+                    AND ur.user_id IS NULL
                 """, seven_days_ago)
                 
                 for row in rows:

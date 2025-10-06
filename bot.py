@@ -260,6 +260,9 @@ async def cmd_admin_reminders(message: Message):
                 ORDER BY created_at DESC
             """)
             
+            # Отладочная информация
+            logger.info(f"Found {len(incomplete_details)} incomplete registrations")
+            
             # Последние напоминания
             recent_reminders = await conn.fetch("""
                 SELECT user_id, reminder_type, sent_at 
