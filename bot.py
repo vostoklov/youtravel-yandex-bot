@@ -35,14 +35,19 @@ bot = Bot(token=config.BOT_TOKEN)
 dp = Dispatcher()
 
 # ============================================================================
-# ОТЛАДКА
+# АДМИНСКИЕ КОМАНДЫ (ПЕРВЫМИ!)
 # ============================================================================
 
-@dp.message()
-async def debug_handler(message: Message):
-    """Отладочный обработчик для всех сообщений"""
-    if message.text and message.text.startswith('/admin'):
-        logger.info(f"🔍 Debug: Admin command detected: '{message.text}' from user {message.from_user.id}")
+@dp.message(Command("admin"))
+async def cmd_admin(message: Message):
+    """Админская панель"""
+    logger.info("🔧 Admin command received!")
+    user_id = message.from_user.id
+    logger.info(f"🔧 User ID: {user_id}")
+    
+    # Простой ответ для тестирования
+    await message.answer("🔧 Админская панель работает!")
+    return
 
 # ============================================================================
 # КОМАНДЫ И МЕНЮ
@@ -424,39 +429,7 @@ def is_admin(user_id: int) -> bool:
     logger.info(f"🔍 Admin check result: {result}")
     return result
 
-@dp.message(Command("admin"))
-async def cmd_admin(message: Message):
-    """Админская панель"""
-    logger.info("🔧 Admin command received!")
-    user_id = message.from_user.id
-    logger.info(f"🔧 User ID: {user_id}")
-    
-    # Простой ответ для тестирования
-    await message.answer("🔧 Админская панель работает!")
-    return
-    
-    if not is_admin(user_id):
-        await message.answer("❌ У вас нет прав администратора.")
-        return
-    
-    # Получаем статистику
-    stats = await db.get_stats()
-    
-    await message.answer(
-        f"👨‍💼 <b>Админская панель</b>\n\n"
-        f"📊 <b>Статистика:</b>\n"
-        f"• Всего пользователей: {stats['total_users']}\n"
-        f"• Завершили регистрацию: {stats['completed_users']}\n"
-        f"• Конверсия: {stats['conversion_rate']:.1f}%\n"
-        f"• Выдано промокодов: {stats['promo_codes_issued']}\n\n"
-        f"🔧 <b>Команды:</b>\n"
-        f"• /admin_stats - детальная статистика\n"
-        f"• /admin_users - список пользователей\n"
-        f"• /admin_reset <user_id> - сбросить пользователя\n"
-        f"• /admin_promos - проверить промокоды\n"
-        f"• /admin_monitor - мониторинг системы",
-        parse_mode="HTML"
-    )
+# Удален дублирующий обработчик
 
 @dp.message(Command("admin_stats"))
 async def cmd_admin_stats(message: Message):
