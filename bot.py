@@ -97,6 +97,131 @@ async def cmd_admin_stats(message: Message):
         parse_mode="HTML"
     )
 
+@dp.message(Command("admin_users"))
+async def cmd_admin_users(message: Message):
+    """Список последних пользователей"""
+    user_id = message.from_user.id
+    
+    if not is_admin(user_id):
+        await message.answer("❌ У вас нет прав администратора.")
+        return
+    
+    # Получаем последних пользователей
+    users = await db.get_recent_users(limit=10)
+    
+    if not users:
+        await message.answer("📝 Пользователей пока нет.")
+        return
+    
+    text = "👥 <b>Последние пользователи:</b>\n\n"
+    for user in users:
+        status = "✅" if user['completed_at'] else "⏳"
+        date = user['created_at'].strftime("%d.%m %H:%M")
+        text += f"{status} ID: {user['user_id']}\n"
+        if user['email']:
+            text += f"   📧 {mask_email(user['email'])}\n"
+        if user['inn']:
+            text += f"   🏢 {mask_inn(user['inn'])}\n"
+        if user['promo_code']:
+            text += f"   🎟️ {user['promo_code']}\n"
+        text += f"   📅 {date}\n\n"
+    
+    await message.answer(text, parse_mode="HTML")
+
+@dp.message(Command("admin_reset"))
+async def cmd_admin_reset(message: Message):
+    """Сброс пользователя (админ)"""
+    user_id = message.from_user.id
+    
+    if not is_admin(user_id):
+        await message.answer("❌ У вас нет прав администратора.")
+        return
+    
+    # Парсим команду: /admin_reset <target_user_id>
+    try:
+        target_user_id = int(message.text.split()[1])
+    except (IndexError, ValueError):
+        await message.answer(
+            "❌ Неверный формат команды.\n"
+            "Использование: /admin_reset user_id"
+        )
+        return
+    
+    # Сбрасываем пользователя
+    success = await db.delete_user(target_user_id)
+    
+    if success:
+        await message.answer(f"✅ Пользователь {target_user_id} сброшен.")
+        logger.info(f"Admin {user_id} reset user {target_user_id}")
+    else:
+        await message.answer(f"❌ Пользователь {target_user_id} не найден.")
+
+@dp.message(Command("admin_promos"))
+async def cmd_admin_promos(message: Message):
+    """Проверка промокодов"""
+    user_id = message.from_user.id
+    
+    if not is_admin(user_id):
+        await message.answer("❌ У вас нет прав администратора.")
+        return
+    
+    try:
+        # Получаем доступные промокоды
+        available_promos = sheets.get_available_promo_codes()
+        
+        await message.answer(
+            f"🎟️ <b>Доступные промокоды:</b>\n\n"
+            f"Количество: {len(available_promos)}\n\n"
+            f"Первые 5:\n" + "\n".join(available_promos[:5]),
+            parse_mode="HTML"
+        )
+    except Exception as e:
+        await message.answer(f"❌ Ошибка получения промокодов: {e}")
+
+@dp.message(Command("admin_monitor"))
+async def cmd_admin_monitor(message: Message):
+    """Проверка мониторинга системы"""
+    user_id = message.from_user.id
+    
+    if not is_admin(user_id):
+        await message.answer("❌ У вас нет прав администратора.")
+        return
+    
+    try:
+        # Проверяем здоровье системы
+        health = await monitoring.check_system_health()
+        metrics = await monitoring.check_metrics()
+        
+        # Формируем отчет
+        report = f"🔍 <b>Мониторинг системы</b>\n\n"
+        
+        # Состояние системы
+        report += f"🔧 <b>Состояние:</b>\n"
+        report += f"• База данных: {'✅' if health['database'] else '❌'}\n"
+        report += f"• Google Sheets: {'✅' if health['google_sheets'] else '❌'}\n"
+        report += f"• Промокоды: {health['promo_codes']}\n\n"
+        
+        # Метрики
+        stats = metrics.get('stats', {})
+        report += f"📊 <b>Метрики:</b>\n"
+        report += f"• Пользователей: {stats.get('total_users', 0)}\n"
+        report += f"• Конверсия: {stats.get('conversion_rate', 0):.1f}%\n"
+        report += f"• Доступно промокодов: {stats.get('available_promos', 0)}\n\n"
+        
+        # Алерты
+        alerts = metrics.get('alerts', [])
+        if alerts:
+            report += f"⚠️ <b>Алерты:</b>\n"
+            for alert in alerts:
+                report += f"• {alert}\n"
+        else:
+            report += f"✅ <b>Все в порядке</b>\n"
+        
+        await message.answer(report, parse_mode="HTML")
+        
+    except Exception as e:
+        await message.answer(f"❌ Ошибка мониторинга: {e}")
+
 # ============================================================================
 # КОМАНДЫ И МЕНЮ
 # ============================================================================
@@ -477,132 +602,7 @@ def is_admin(user_id: int) -> bool:
     logger.info(f"🔍 Admin check result: {result}")
     return result
 
-# Удален дублирующий обработчик
-
-@dp.message(Command("admin_users"))
-async def cmd_admin_users(message: Message):
-    """Список последних пользователей"""
-    user_id = message.from_user.id
-    
-    if not is_admin(user_id):
-        await message.answer("❌ У вас нет прав администратора.")
-        return
-    
-    # Получаем последних пользователей
-    users = await db.get_recent_users(limit=10)
-    
-    if not users:
-        await message.answer("📝 Пользователей пока нет.")
-        return
-    
-    text = "👥 <b>Последние пользователи:</b>\n\n"
-    for user in users:
-        status = "✅" if user['completed_at'] else "⏳"
-        date = user['created_at'].strftime("%d.%m %H:%M")
-        text += f"{status} ID: {user['user_id']}\n"
-        if user['email']:
-            text += f"   📧 {mask_email(user['email'])}\n"
-        if user['inn']:
-            text += f"   🏢 {mask_inn(user['inn'])}\n"
-        if user['promo_code']:
-            text += f"   🎟️ {user['promo_code']}\n"
-        text += f"   📅 {date}\n\n"
-    
-    await message.answer(text, parse_mode="HTML")
-
-@dp.message(Command("admin_reset"))
-async def cmd_admin_reset(message: Message):
-    """Сброс пользователя (админ)"""
-    user_id = message.from_user.id
-    
-    if not is_admin(user_id):
-        await message.answer("❌ У вас нет прав администратора.")
-        return
-    
-    # Парсим команду: /admin_reset <target_user_id>
-    try:
-        target_user_id = int(message.text.split()[1])
-    except (IndexError, ValueError):
-        await message.answer(
-            "❌ Неверный формат команды.\n"
-            "Использование: /admin_reset <user_id>"
-        )
-        return
-    
-    # Сбрасываем пользователя
-    success = await db.delete_user(target_user_id)
-    
-    if success:
-        await message.answer(f"✅ Пользователь {target_user_id} сброшен.")
-        logger.info(f"Admin {user_id} reset user {target_user_id}")
-    else:
-        await message.answer(f"❌ Пользователь {target_user_id} не найден.")
-
-@dp.message(Command("admin_promos"))
-async def cmd_admin_promos(message: Message):
-    """Проверка промокодов"""
-    user_id = message.from_user.id
-    
-    if not is_admin(user_id):
-        await message.answer("❌ У вас нет прав администратора.")
-        return
-    
-    try:
-        # Получаем доступные промокоды
-        available_promos = sheets.get_available_promo_codes()
-        
-        await message.answer(
-            f"🎟️ <b>Доступные промокоды:</b>\n\n"
-            f"Количество: {len(available_promos)}\n\n"
-            f"Первые 5:\n" + "\n".join(available_promos[:5]),
-            parse_mode="HTML"
-        )
-    except Exception as e:
-        await message.answer(f"❌ Ошибка получения промокодов: {e}")
-
-@dp.message(Command("admin_monitor"))
-async def cmd_admin_monitor(message: Message):
-    """Проверка мониторинга системы"""
-    user_id = message.from_user.id
-    
-    if not is_admin(user_id):
-        await message.answer("❌ У вас нет прав администратора.")
-        return
-    
-    try:
-        # Проверяем здоровье системы
-        health = await monitoring.check_system_health()
-        metrics = await monitoring.check_metrics()
-        
-        # Формируем отчет
-        report = f"🔍 <b>Мониторинг системы</b>\n\n"
-        
-        # Состояние системы
-        report += f"🔧 <b>Состояние:</b>\n"
-        report += f"• База данных: {'✅' if health['database'] else '❌'}\n"
-        report += f"• Google Sheets: {'✅' if health['google_sheets'] else '❌'}\n"
-        report += f"• Промокоды: {health['promo_codes']}\n\n"
-        
-        # Метрики
-        stats = metrics.get('stats', {})
-        report += f"📊 <b>Метрики:</b>\n"
-        report += f"• Пользователей: {stats.get('total_users', 0)}\n"
-        report += f"• Конверсия: {stats.get('conversion_rate', 0):.1f}%\n"
-        report += f"• Доступно промокодов: {stats.get('available_promos', 0)}\n\n"
-        
-        # Алерты
-        alerts = metrics.get('alerts', [])
-        if alerts:
-            report += f"⚠️ <b>Алерты:</b>\n"
-            for alert in alerts:
-                report += f"• {alert}\n"
-        else:
-            report += f"✅ <b>Все в порядке</b>\n"
-        
-        await message.answer(report, parse_mode="HTML")
-        
-    except Exception as e:
-        await message.answer(f"❌ Ошибка мониторинга: {e}")
+# Удалены дублирующие обработчики
 
 # ============================================================================
 # ЗАПУСК БОТА
