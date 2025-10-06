@@ -605,7 +605,7 @@ async def main():
         # Подключаемся к Google Sheets
         sheets.connect()
         
-        logger.info("🤖 Bot started")
+        logger.info("🤖 Bot started with admin panel")
         
         # Запускаем мониторинг в фоне
         monitoring_task = asyncio.create_task(monitoring.start_monitoring(bot))
