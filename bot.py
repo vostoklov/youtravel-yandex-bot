@@ -404,6 +404,17 @@ async def unknown_message(message: Message):
     )
 
 # ============================================================================
+# ОТЛАДКА
+# ============================================================================
+
+@dp.message()
+async def debug_handler(message: Message):
+    """Отладочный обработчик для всех сообщений"""
+    logger.info(f"🔍 Debug: Received message: '{message.text}' from user {message.from_user.id}")
+    if message.text and message.text.startswith('/admin'):
+        logger.info(f"🔍 Debug: Admin command detected: '{message.text}'")
+
+# ============================================================================
 # АДМИНСКИЕ КОМАНДЫ
 # ============================================================================
 
