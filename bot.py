@@ -15,6 +15,7 @@ from database import db
 from sheets import sheets
 from keyboards import get_main_menu, get_confirmation_keyboard, remove_keyboard
 from utils import validate_email, normalize_email, validate_inn, normalize_inn, mask_email, mask_inn
+from monitoring import monitoring
 
 # Logging
 logging.basicConfig(
@@ -433,7 +434,8 @@ async def cmd_admin(message: Message):
         f"• /admin_stats - детальная статистика\n"
         f"• /admin_users - список пользователей\n"
         f"• /admin_reset <user_id> - сбросить пользователя\n"
-        f"• /admin_promos - проверить промокоды",
+        f"• /admin_promos - проверить промокоды\n"
+        f"• /admin_monitor - мониторинг системы",
         parse_mode="HTML"
     )
 
@@ -546,6 +548,50 @@ async def cmd_admin_promos(message: Message):
     except Exception as e:
         await message.answer(f"❌ Ошибка получения промокодов: {e}")
 
+@dp.message(Command("admin_monitor"))
+async def cmd_admin_monitor(message: Message):
+    """Проверка мониторинга системы"""
+    user_id = message.from_user.id
+    
+    if not is_admin(user_id):
+        await message.answer("❌ У вас нет прав администратора.")
+        return
+    
+    try:
+        # Проверяем здоровье системы
+        health = await monitoring.check_system_health()
+        metrics = await monitoring.check_metrics()
+        
+        # Формируем отчет
+        report = f"🔍 <b>Мониторинг системы</b>\n\n"
+        
+        # Состояние системы
+        report += f"🔧 <b>Состояние:</b>\n"
+        report += f"• База данных: {'✅' if health['database'] else '❌'}\n"
+        report += f"• Google Sheets: {'✅' if health['google_sheets'] else '❌'}\n"
+        report += f"• Промокоды: {health['promo_codes']}\n\n"
+        
+        # Метрики
+        stats = metrics.get('stats', {})
+        report += f"📊 <b>Метрики:</b>\n"
+        report += f"• Пользователей: {stats.get('total_users', 0)}\n"
+        report += f"• Конверсия: {stats.get('conversion_rate', 0):.1f}%\n"
+        report += f"• Доступно промокодов: {stats.get('available_promos', 0)}\n\n"
+        
+        # Алерты
+        alerts = metrics.get('alerts', [])
+        if alerts:
+            report += f"⚠️ <b>Алерты:</b>\n"
+            for alert in alerts:
+                report += f"• {alert}\n"
+        else:
+            report += f"✅ <b>Все в порядке</b>\n"
+        
+        await message.answer(report, parse_mode="HTML")
+        
+    except Exception as e:
+        await message.answer(f"❌ Ошибка мониторинга: {e}")
+
 # ============================================================================
 # ЗАПУСК БОТА
 # ============================================================================
@@ -561,6 +607,9 @@ async def main():
         
         logger.info("🤖 Bot started")
         
+        # Запускаем мониторинг в фоне
+        monitoring_task = asyncio.create_task(monitoring.start_monitoring(bot))
+        
         # Запускаем polling
         await dp.start_polling(bot)
         
@@ -569,6 +618,9 @@ async def main():
     except Exception as e:
         logger.error(f"Bot error: {e}")
     finally:
+        # Останавливаем мониторинг
+        if 'monitoring_task' in locals():
+            monitoring_task.cancel()
         await db.close()
         await bot.session.close()
 
