@@ -178,6 +178,23 @@ class SheetsManager:
             import traceback
             logger.error(traceback.format_exc())
             return None
+    
+    def get_available_promo_codes(self) -> list:
+        """Получить все доступные промокоды"""
+        try:
+            # Открываем таблицу с промокодами
+            promo_sheet = self.client.open_by_key(config.GOOGLE_SHEET_PROMOS_ID)
+            promo_worksheet = promo_sheet.sheet1
+            
+            # Получаем все промокоды из колонки A (пропускаем заголовок)
+            promo_codes = promo_worksheet.col_values(1)[1:]
+            
+            # Фильтруем пустые значения
+            return [promo.strip() for promo in promo_codes if promo and promo.strip()]
+            
+        except Exception as e:
+            logger.error(f"Error getting promo codes: {type(e).__name__}: {e}")
+            return []
 
 
 # Глобальный экземпляр

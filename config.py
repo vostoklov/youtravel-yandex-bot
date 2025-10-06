@@ -20,6 +20,9 @@ GOOGLE_CREDENTIALS_JSON = os.getenv("GOOGLE_CREDENTIALS_JSON", "credentials.json
 # Support
 SUPPORT_USERNAME = os.getenv("SUPPORT_USERNAME", "vostoklov")
 
+# Admin
+ADMIN_USER_IDS = [int(x) for x in os.getenv("ADMIN_USER_IDS", "201800866").split(",")]
+
 # Environment
 ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")

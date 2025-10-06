@@ -1,0 +1,47 @@
+# Cursor Rules for YouTravel Bot Project
+
+## Project Context
+This is a Telegram bot for YouTravel × Yandex.Travel B2B registration with promo code distribution.
+
+## Tech Stack
+- Python 3.13
+- aiogram 3.x (Telegram Bot Framework)
+- asyncpg (PostgreSQL)
+- gspread (Google Sheets API)
+- Railway (deployment)
+- PostgreSQL (database)
+
+## Code Style
+- Use type hints
+- Follow PEP 8
+- Use async/await properly
+- Add comprehensive logging
+- Include error handling
+
+## Key Files
+- bot.py - Main bot logic
+- database.py - PostgreSQL operations
+- sheets.py - Google Sheets integration
+- config.py - Environment configuration
+
+## Important Notes
+- Database uses 'user_id' column, NOT 'telegram_id'
+- Google Sheets has 2 tables: Emails and Promos
+- All sensitive data in environment variables
+- Railway auto-deploys from main branch
+
+## Testing
+- Use test_sheets_connection.py for Google Sheets
+- Use reset_user.py for database testing
+- Test with /reset command in bot
+
+## Deployment
+- Push to main branch triggers Railway deployment
+- Check logs with: railway logs --lines 100
+- Monitor errors and performance
+
+## Security
+- Never commit credentials.json or .env
+- Use environment variables for all secrets
+- Validate all user inputs
+- Handle errors gracefully

@@ -403,6 +403,150 @@ async def unknown_message(message: Message):
     )
 
 # ============================================================================
+# АДМИНСКИЕ КОМАНДЫ
+# ============================================================================
+
+def is_admin(user_id: int) -> bool:
+    """Проверка, является ли пользователь админом"""
+    return user_id in config.ADMIN_USER_IDS
+
+@dp.message(Command("admin"))
+async def cmd_admin(message: Message):
+    """Админская панель"""
+    user_id = message.from_user.id
+    
+    if not is_admin(user_id):
+        await message.answer("❌ У вас нет прав администратора.")
+        return
+    
+    # Получаем статистику
+    stats = await db.get_stats()
+    
+    await message.answer(
+        f"👨‍💼 <b>Админская панель</b>\n\n"
+        f"📊 <b>Статистика:</b>\n"
+        f"• Всего пользователей: {stats['total_users']}\n"
+        f"• Завершили регистрацию: {stats['completed_users']}\n"
+        f"• Конверсия: {stats['conversion_rate']:.1f}%\n"
+        f"• Выдано промокодов: {stats['promo_codes_issued']}\n\n"
+        f"🔧 <b>Команды:</b>\n"
+        f"• /admin_stats - детальная статистика\n"
+        f"• /admin_users - список пользователей\n"
+        f"• /admin_reset <user_id> - сбросить пользователя\n"
+        f"• /admin_promos - проверить промокоды",
+        parse_mode="HTML"
+    )
+
+@dp.message(Command("admin_stats"))
+async def cmd_admin_stats(message: Message):
+    """Детальная статистика"""
+    user_id = message.from_user.id
+    
+    if not is_admin(user_id):
+        await message.answer("❌ У вас нет прав администратора.")
+        return
+    
+    # Получаем детальную статистику
+    stats = await db.get_detailed_stats()
+    
+    await message.answer(
+        f"📊 <b>Детальная статистика</b>\n\n"
+        f"👥 <b>Пользователи:</b>\n"
+        f"• Всего: {stats['total_users']}\n"
+        f"• Завершили: {stats['completed_users']}\n"
+        f"• В процессе: {stats['in_progress_users']}\n"
+        f"• Конверсия: {stats['conversion_rate']:.1f}%\n\n"
+        f"📅 <b>За последние 24 часа:</b>\n"
+        f"• Новых пользователей: {stats['users_last_24h']}\n"
+        f"• Завершили: {stats['completed_last_24h']}\n\n"
+        f"🎟️ <b>Промокоды:</b>\n"
+        f"• Выдано: {stats['promo_codes_issued']}\n"
+        f"• Доступно: {stats['available_promos']}",
+        parse_mode="HTML"
+    )
+
+@dp.message(Command("admin_users"))
+async def cmd_admin_users(message: Message):
+    """Список последних пользователей"""
+    user_id = message.from_user.id
+    
+    if not is_admin(user_id):
+        await message.answer("❌ У вас нет прав администратора.")
+        return
+    
+    # Получаем последних пользователей
+    users = await db.get_recent_users(limit=10)
+    
+    if not users:
+        await message.answer("📝 Пользователей пока нет.")
+        return
+    
+    text = "👥 <b>Последние пользователи:</b>\n\n"
+    for user in users:
+        status = "✅" if user['completed_at'] else "⏳"
+        date = user['created_at'].strftime("%d.%m %H:%M")
+        text += f"{status} ID: {user['user_id']}\n"
+        if user['email']:
+            text += f"   📧 {mask_email(user['email'])}\n"
+        if user['inn']:
+            text += f"   🏢 {mask_inn(user['inn'])}\n"
+        if user['promo_code']:
+            text += f"   🎟️ {user['promo_code']}\n"
+        text += f"   📅 {date}\n\n"
+    
+    await message.answer(text, parse_mode="HTML")
+
+@dp.message(Command("admin_reset"))
+async def cmd_admin_reset(message: Message):
+    """Сброс пользователя (админ)"""
+    user_id = message.from_user.id
+    
+    if not is_admin(user_id):
+        await message.answer("❌ У вас нет прав администратора.")
+        return
+    
+    # Парсим команду: /admin_reset <target_user_id>
+    try:
+        target_user_id = int(message.text.split()[1])
+    except (IndexError, ValueError):
+        await message.answer(
+            "❌ Неверный формат команды.\n"
+            "Использование: /admin_reset <user_id>"
+        )
+        return
+    
+    # Сбрасываем пользователя
+    success = await db.delete_user(target_user_id)
+    
+    if success:
+        await message.answer(f"✅ Пользователь {target_user_id} сброшен.")
+        logger.info(f"Admin {user_id} reset user {target_user_id}")
+    else:
+        await message.answer(f"❌ Пользователь {target_user_id} не найден.")
+
+@dp.message(Command("admin_promos"))
+async def cmd_admin_promos(message: Message):
+    """Проверка промокодов"""
+    user_id = message.from_user.id
+    
+    if not is_admin(user_id):
+        await message.answer("❌ У вас нет прав администратора.")
+        return
+    
+    try:
+        # Получаем доступные промокоды
+        available_promos = sheets.get_available_promo_codes()
+        
+        await message.answer(
+            f"🎟️ <b>Доступные промокоды:</b>\n\n"
+            f"Количество: {len(available_promos)}\n\n"
+            f"Первые 5:\n" + "\n".join(available_promos[:5]),
+            parse_mode="HTML"
+        )
+    except Exception as e:
+        await message.answer(f"❌ Ошибка получения промокодов: {e}")
+
+# ============================================================================
 # ЗАПУСК БОТА
 # ============================================================================
 

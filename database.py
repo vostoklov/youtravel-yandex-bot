@@ -99,18 +99,76 @@ class Database:
             )
             return result
     
-    async def get_stats(self) -> Dict[str, int]:
-        """Получить статистику"""
+    async def get_stats(self) -> Dict[str, Any]:
+        """Получить базовую статистику"""
         async with self.pool.acquire() as conn:
             total = await conn.fetchval("SELECT COUNT(*) FROM users")
             completed = await conn.fetchval(
                 "SELECT COUNT(*) FROM users WHERE completed_at IS NOT NULL"
             )
+            promo_codes_issued = await conn.fetchval(
+                "SELECT COUNT(*) FROM users WHERE promo_code IS NOT NULL"
+            )
             return {
                 "total_users": total,
-                "completed_registrations": completed,
-                "conversion_rate": round(completed / total * 100, 2) if total > 0 else 0
+                "completed_users": completed,
+                "conversion_rate": round(completed / total * 100, 2) if total > 0 else 0,
+                "promo_codes_issued": promo_codes_issued
             }
+    
+    async def get_detailed_stats(self) -> Dict[str, Any]:
+        """Получить детальную статистику"""
+        async with self.pool.acquire() as conn:
+            # Общая статистика
+            total = await conn.fetchval("SELECT COUNT(*) FROM users")
+            completed = await conn.fetchval(
+                "SELECT COUNT(*) FROM users WHERE completed_at IS NOT NULL"
+            )
+            in_progress = await conn.fetchval(
+                "SELECT COUNT(*) FROM users WHERE completed_at IS NULL AND step != 'start'"
+            )
+            
+            # За последние 24 часа
+            users_last_24h = await conn.fetchval(
+                "SELECT COUNT(*) FROM users WHERE created_at > NOW() - INTERVAL '24 hours'"
+            )
+            completed_last_24h = await conn.fetchval(
+                "SELECT COUNT(*) FROM users WHERE completed_at > NOW() - INTERVAL '24 hours'"
+            )
+            
+            # Промокоды
+            promo_codes_issued = await conn.fetchval(
+                "SELECT COUNT(*) FROM users WHERE promo_code IS NOT NULL"
+            )
+            
+            return {
+                "total_users": total,
+                "completed_users": completed,
+                "in_progress_users": in_progress,
+                "conversion_rate": round(completed / total * 100, 2) if total > 0 else 0,
+                "users_last_24h": users_last_24h,
+                "completed_last_24h": completed_last_24h,
+                "promo_codes_issued": promo_codes_issued,
+                "available_promos": 0  # Будет заполнено из sheets
+            }
+    
+    async def get_recent_users(self, limit: int = 10) -> list:
+        """Получить последних пользователей"""
+        async with self.pool.acquire() as conn:
+            rows = await conn.fetch(
+                "SELECT * FROM users ORDER BY created_at DESC LIMIT $1",
+                limit
+            )
+            return [dict(row) for row in rows]
+    
+    async def delete_user(self, user_id: int) -> bool:
+        """Удалить пользователя"""
+        async with self.pool.acquire() as conn:
+            result = await conn.execute(
+                "DELETE FROM users WHERE user_id = $1",
+                user_id
+            )
+            return result == "DELETE 1"
 
 # Глобальный инстанс
 db = Database()
