@@ -326,8 +326,7 @@ async def cmd_help(message: Message):
         "/start - Начать регистрацию\n"
         "/status - Проверить статус регистрации\n"
         "/menu - Показать главное меню\n"
-        "/help - Показать эту справку\n"
-        "/reset - Сбросить регистрацию (для повторного тестирования)\n\n"
+        "/help - Показать эту справку\n\n"
         "<b>Процесс регистрации:</b>\n"
         "1️⃣ Введите email от YouTravel\n"
         "2️⃣ Зарегистрируйтесь в Яндекс.Путешествиях\n"
@@ -351,10 +350,18 @@ async def cmd_support(message: Message):
 
 @dp.message(Command("reset"))
 async def cmd_reset(message: Message, state: FSMContext):
-    """Сброс регистрации для повторного тестирования (DEV)"""
+    """Сброс регистрации (только для админов)"""
     user_id = message.from_user.id
     
-    logger.info(f"User {user_id} requested reset")
+    # Проверяем, является ли пользователь админом
+    if not is_admin(user_id):
+        await message.answer(
+            "❌ У вас нет прав для сброса регистрации.\n"
+            "Обратитесь к администратору для помощи."
+        )
+        return
+    
+    logger.info(f"Admin {user_id} requested reset")
     
     # Удаляем пользователя из базы
     try:
