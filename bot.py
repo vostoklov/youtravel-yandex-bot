@@ -68,6 +68,35 @@ async def cmd_admin(message: Message):
         parse_mode="HTML"
     )
 
+@dp.message(Command("admin_stats"))
+async def cmd_admin_stats(message: Message):
+    """Детальная статистика"""
+    logger.info("🔧 Admin_stats command received!")
+    user_id = message.from_user.id
+    
+    if not is_admin(user_id):
+        await message.answer("❌ У вас нет прав администратора.")
+        return
+    
+    # Получаем детальную статистику
+    stats = await db.get_detailed_stats()
+    
+    await message.answer(
+        f"📊 <b>Детальная статистика</b>\n\n"
+        f"👥 <b>Пользователи:</b>\n"
+        f"• Всего: {stats['total_users']}\n"
+        f"• Завершили: {stats['completed_users']}\n"
+        f"• В процессе: {stats['in_progress_users']}\n"
+        f"• Конверсия: {stats['conversion_rate']:.1f}%\n\n"
+        f"📅 <b>За последние 24 часа:</b>\n"
+        f"• Новых пользователей: {stats['users_last_24h']}\n"
+        f"• Завершили: {stats['completed_last_24h']}\n\n"
+        f"🎟️ <b>Промокоды:</b>\n"
+        f"• Выдано: {stats['promo_codes_issued']}\n"
+        f"• Доступно: {stats['available_promos']}",
+        parse_mode="HTML"
+    )
+
 # ============================================================================
 # КОМАНДЫ И МЕНЮ
 # ============================================================================
@@ -449,35 +478,6 @@ def is_admin(user_id: int) -> bool:
     return result
 
 # Удален дублирующий обработчик
-
-@dp.message(Command("admin_stats"))
-async def cmd_admin_stats(message: Message):
-    """Детальная статистика"""
-    logger.info("🔧 Admin_stats command received!")
-    user_id = message.from_user.id
-    
-    if not is_admin(user_id):
-        await message.answer("❌ У вас нет прав администратора.")
-        return
-    
-    # Получаем детальную статистику
-    stats = await db.get_detailed_stats()
-    
-    await message.answer(
-        f"📊 <b>Детальная статистика</b>\n\n"
-        f"👥 <b>Пользователи:</b>\n"
-        f"• Всего: {stats['total_users']}\n"
-        f"• Завершили: {stats['completed_users']}\n"
-        f"• В процессе: {stats['in_progress_users']}\n"
-        f"• Конверсия: {stats['conversion_rate']:.1f}%\n\n"
-        f"📅 <b>За последние 24 часа:</b>\n"
-        f"• Новых пользователей: {stats['users_last_24h']}\n"
-        f"• Завершили: {stats['completed_last_24h']}\n\n"
-        f"🎟️ <b>Промокоды:</b>\n"
-        f"• Выдано: {stats['promo_codes_issued']}\n"
-        f"• Доступно: {stats['available_promos']}",
-        parse_mode="HTML"
-    )
 
 @dp.message(Command("admin_users"))
 async def cmd_admin_users(message: Message):
