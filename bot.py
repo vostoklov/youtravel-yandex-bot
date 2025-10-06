@@ -252,6 +252,14 @@ async def cmd_admin_reminders(message: Message):
                 SELECT COUNT(*) FROM users WHERE completed_at IS NULL
             """)
             
+            # Незавершенные регистрации с деталями
+            incomplete_details = await conn.fetch("""
+                SELECT user_id, email, step, created_at, telegram_username
+                FROM users 
+                WHERE completed_at IS NULL
+                ORDER BY created_at DESC
+            """)
+            
             # Последние напоминания
             recent_reminders = await conn.fetch("""
                 SELECT user_id, reminder_type, sent_at 
@@ -264,6 +272,27 @@ async def cmd_admin_reminders(message: Message):
         report += f"📊 <b>Статистика:</b>\n"
         report += f"• Всего отправлено: {total_reminders}\n"
         report += f"• Незавершенных регистраций: {incomplete_users}\n\n"
+        
+        # Детали незавершенных регистраций
+        if incomplete_details:
+            report += f"⏳ <b>Незавершенные регистрации:</b>\n"
+            for user in incomplete_details:
+                date = user['created_at'].strftime('%d.%m %H:%M')
+                username = f"@{user['telegram_username']}" if user['telegram_username'] else "без username"
+                email = mask_email(user['email']) if user['email'] else "не указан"
+                step_names = {
+                    'start': 'начало',
+                    'email': 'ввод email',
+                    'inn': 'ввод ИНН',
+                    'confirmation': 'подтверждение'
+                }
+                step_name = step_names.get(user['step'], user['step'])
+                report += f"• ID: {user['user_id']} ({username})\n"
+                report += f"  📧 {email}\n"
+                report += f"  📍 Этап: {step_name}\n"
+                report += f"  📅 {date}\n\n"
+        else:
+            report += f"✅ <b>Все регистрации завершены!</b>\n\n"
         
         if recent_reminders:
             report += f"📝 <b>Последние напоминания:</b>\n"
