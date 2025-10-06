@@ -417,7 +417,9 @@ def is_admin(user_id: int) -> bool:
 @dp.message(Command("admin"))
 async def cmd_admin(message: Message):
     """Админская панель"""
+    logger.info("🔧 Admin command received!")
     user_id = message.from_user.id
+    logger.info(f"🔧 User ID: {user_id}")
     
     if not is_admin(user_id):
         await message.answer("❌ У вас нет прав администратора.")
