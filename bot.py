@@ -409,7 +409,10 @@ async def unknown_message(message: Message):
 
 def is_admin(user_id: int) -> bool:
     """Проверка, является ли пользователь админом"""
-    return user_id in config.ADMIN_USER_IDS
+    logger.info(f"🔍 Checking admin for user {user_id}, admin IDs: {config.ADMIN_USER_IDS}")
+    result = user_id in config.ADMIN_USER_IDS
+    logger.info(f"🔍 Admin check result: {result}")
+    return result
 
 @dp.message(Command("admin"))
 async def cmd_admin(message: Message):
@@ -606,6 +609,7 @@ async def main():
         sheets.connect()
         
         logger.info("🤖 Bot started with admin panel")
+        logger.info(f"🔧 Admin IDs: {config.ADMIN_USER_IDS}")
         
         # Запускаем мониторинг в фоне
         monitoring_task = asyncio.create_task(monitoring.start_monitoring(bot))
