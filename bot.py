@@ -610,6 +610,7 @@ async def main():
         
         logger.info("🤖 Bot started with admin panel")
         logger.info(f"🔧 Admin IDs: {config.ADMIN_USER_IDS}")
+        logger.info(f"🔧 Admin IDs type: {type(config.ADMIN_USER_IDS)}")
         
         # Запускаем мониторинг в фоне
         monitoring_task = asyncio.create_task(monitoring.start_monitoring(bot))
