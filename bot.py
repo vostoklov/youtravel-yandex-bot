@@ -44,6 +44,8 @@ async def debug_handler(message: Message):
     logger.info(f"🔍 Debug: Received message: '{message.text}' from user {message.from_user.id}")
     if message.text and message.text.startswith('/admin'):
         logger.info(f"🔍 Debug: Admin command detected: '{message.text}'")
+    # Не блокируем обработку другими обработчиками
+    return
 
 # ============================================================================
 # КОМАНДЫ И МЕНЮ
