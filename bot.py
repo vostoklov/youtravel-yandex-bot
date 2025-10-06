@@ -453,6 +453,7 @@ def is_admin(user_id: int) -> bool:
 @dp.message(Command("admin_stats"))
 async def cmd_admin_stats(message: Message):
     """Детальная статистика"""
+    logger.info("🔧 Admin_stats command received!")
     user_id = message.from_user.id
     
     if not is_admin(user_id):
