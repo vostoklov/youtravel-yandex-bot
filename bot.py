@@ -823,9 +823,21 @@ async def reject_confirmation(callback: CallbackQuery, state: FSMContext):
 # ============================================================================
 
 @dp.message()
-async def unknown_message(message: Message):
+async def unknown_message(message: Message, state: FSMContext):
     """Обработка неизвестных сообщений"""
     text = message.text.lower()
+    current_state = await state.get_state()
+    
+    # Если пользователь в процессе регистрации, не обрабатываем как неизвестное сообщение
+    if current_state in [
+        'RegistrationStates:waiting_for_inn',
+        'RegistrationStates:waiting_for_legal_entity', 
+        'RegistrationStates:waiting_for_individual_entrepreneur',
+        'RegistrationStates:waiting_for_email',
+        'SupportStates:waiting_for_support_message'
+    ]:
+        # Пропускаем обработку - пусть сработают специфичные обработчики
+        return
     
     # Проверяем, не является ли это сообщением в поддержку
     support_keywords = ['поддержка', 'помощь', 'проблема', 'вопрос', 'ошибка', 'не работает', 'не получается', 'тестовое сообщение']
@@ -839,8 +851,6 @@ async def unknown_message(message: Message):
             parse_mode="HTML"
         )
         # Устанавливаем состояние поддержки
-        from aiogram.fsm.context import FSMContext
-        state = FSMContext(storage=dp.storage, key=message.chat.id, user=message.from_user.id)
         await state.set_state(SupportStates.waiting_for_support_message)
         return
     
