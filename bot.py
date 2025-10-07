@@ -14,7 +14,7 @@ import time
 import config
 from database import db
 from sheets import sheets
-from keyboards import get_main_menu, get_confirmation_keyboard, remove_keyboard
+from keyboards import get_main_menu, get_confirmation_keyboard, remove_keyboard, get_main_menu_inline
 from utils import validate_email, normalize_email, validate_inn, normalize_inn, mask_email, mask_inn
 from monitoring import monitoring
 from reminders import reminders
@@ -519,6 +519,43 @@ async def cmd_status(message: Message):
             reply_markup=get_main_menu(),
             parse_mode="HTML"
         )
+
+@dp.message(Command("menu"))
+async def cmd_menu(message: Message):
+    """Показать главное меню"""
+    await message.answer(
+        "📱 Главное меню:",
+        reply_markup=get_main_menu()
+    )
+
+@dp.message(Command("buttons"))
+async def cmd_buttons(message: Message):
+    """Показать кнопки (если reply keyboard не работает)"""
+    await message.answer(
+        "📱 Главное меню (альтернативные кнопки):",
+        reply_markup=get_main_menu_inline()
+    )
+
+@dp.callback_query(F.data == "menu_status")
+async def callback_menu_status(callback: CallbackQuery):
+    """Обработка кнопки 'Мой статус'"""
+    await callback.answer()
+    # Имитируем команду /status
+    await cmd_status(callback.message)
+
+@dp.callback_query(F.data == "menu_help")
+async def callback_menu_help(callback: CallbackQuery):
+    """Обработка кнопки 'Помощь'"""
+    await callback.answer()
+    # Имитируем команду /help
+    await cmd_help(callback.message)
+
+@dp.callback_query(F.data == "menu_support")
+async def callback_menu_support(callback: CallbackQuery, state: FSMContext):
+    """Обработка кнопки 'Поддержка'"""
+    await callback.answer()
+    # Имитируем команду поддержки
+    await cmd_support(callback.message, state)
 
 @dp.message(Command("help"))
 @dp.message(F.text == "ℹ️ Помощь")
