@@ -151,22 +151,16 @@ class SheetsManager:
                 logger.info(f"Email {email} found in YouTravel database")
                 return True
             
-            # Проверяем в базе верифицированных ТЭ
+            # Проверяем в базе верифицированных ТЭ (наш лист)
             try:
-                te_spreadsheet = self.client.open_by_key('1_2MRMwHhMhtKjvsp_AdK7Qz_Br3fdl5ICMSOehDoY64')
-                te_worksheet = te_spreadsheet.sheet1
+                te_worksheet = self.client.open_by_key(config.GOOGLE_SHEET_EMAILS_ID).worksheet('Verified TE')
                 
-                # Получаем все логины (столбец 3) и статус проверки (столбец 5)
-                all_rows = te_worksheet.get_all_values()
+                # Получаем все email из столбца A (пропускаем заголовок)
+                te_emails = te_worksheet.col_values(1)[1:]
                 
-                for row in all_rows[1:]:  # Пропускаем заголовок
-                    if len(row) >= 5:
-                        te_email = row[2].strip()  # Логин
-                        is_verified = row[4].strip().lower()  # Проверенный ТЭ
-                        
-                        if te_email.lower() == email.lower() and is_verified == 'да':
-                            logger.info(f"Email {email} found in verified TE database")
-                            return True
+                if email.lower() in [e.lower() for e in te_emails if e]:
+                    logger.info(f"Email {email} found in verified TE database")
+                    return True
                             
             except Exception as te_error:
                 logger.warning(f"Could not check TE database: {te_error}")
