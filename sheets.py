@@ -139,11 +139,40 @@ class SheetsManager:
             raise
     
     def check_email_exists(self, email: str) -> bool:
-        """Проверка существования email в таблице YouTravel"""
+        """Проверка существования email в таблице YouTravel и базе ТЭ"""
         try:
-            # Получаем все email из колонки A (пропускаем заголовок)
-            emails = self.worksheet.col_values(1)[1:]
-            return email.lower() in [e.lower() for e in emails if e]
+            # Убеждаемся, что подключение установлено
+            if not self.client:
+                self.connect()
+            
+            # Проверяем в базе YouTravel
+            youtravel_emails = self.worksheet.col_values(1)[1:]
+            if email.lower() in [e.lower() for e in youtravel_emails if e]:
+                logger.info(f"Email {email} found in YouTravel database")
+                return True
+            
+            # Проверяем в базе верифицированных ТЭ
+            try:
+                te_spreadsheet = self.client.open_by_key('1_2MRMwHhMhtKjvsp_AdK7Qz_Br3fdl5ICMSOehDoY64')
+                te_worksheet = te_spreadsheet.sheet1
+                
+                # Получаем все логины (столбец 3) и статус проверки (столбец 5)
+                all_rows = te_worksheet.get_all_values()
+                
+                for row in all_rows[1:]:  # Пропускаем заголовок
+                    if len(row) >= 5:
+                        te_email = row[2].strip()  # Логин
+                        is_verified = row[4].strip().lower()  # Проверенный ТЭ
+                        
+                        if te_email.lower() == email.lower() and is_verified == 'да':
+                            logger.info(f"Email {email} found in verified TE database")
+                            return True
+                            
+            except Exception as te_error:
+                logger.warning(f"Could not check TE database: {te_error}")
+            
+            return False
+            
         except Exception as e:
             logger.error(f"Error checking email: {e}")
             return False
