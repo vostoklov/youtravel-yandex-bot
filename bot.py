@@ -528,9 +528,44 @@ async def cmd_menu(message: Message):
         reply_markup=get_main_menu()
     )
 
+@dp.message(Command("reset"))
+async def cmd_reset_user(message: Message, state: FSMContext):
+    """Сбросить состояние пользователя"""
+    user_id = message.from_user.id
+    
+    # Проверяем права администратора
+    if not is_admin(user_id):
+        await message.answer("❌ У вас нет прав для сброса.")
+        return
+    
+    # Сбрасываем состояние
+    await state.clear()
+    
+    await message.answer(
+        "🔄 Состояние сброшено!\n"
+        "Теперь вы можете начать заново.",
+        reply_markup=get_main_menu()
+    )
+
 @dp.message(Command("buttons"))
-async def cmd_buttons(message: Message):
+async def cmd_buttons(message: Message, state: FSMContext):
     """Показать кнопки (если reply keyboard не работает)"""
+    current_state = await state.get_state()
+    
+    # Если пользователь в процессе регистрации, не показываем кнопки
+    if current_state in [
+        'RegistrationStates:waiting_for_email',
+        'RegistrationStates:waiting_for_inn',
+        'RegistrationStates:waiting_for_legal_entity', 
+        'RegistrationStates:waiting_for_individual_entrepreneur'
+    ]:
+        await message.answer(
+            "⏳ Вы находитесь в процессе регистрации.\n"
+            "Завершите текущий шаг, чтобы получить доступ к меню.",
+            reply_markup=get_main_menu_inline()
+        )
+        return
+    
     await message.answer(
         "📱 Главное меню (альтернативные кнопки):",
         reply_markup=get_main_menu_inline()
