@@ -255,6 +255,81 @@ class SheetsManager:
         except Exception as e:
             logger.error(f"Error getting promo codes: {type(e).__name__}: {e}")
             return []
+    
+    def check_email_already_registered(self, email: str) -> bool:
+        """Проверить, не зарегистрирован ли уже этот email"""
+        try:
+            # Убеждаемся, что подключение установлено
+            if not self.client:
+                self.connect()
+            
+            # Открываем основную таблицу
+            spreadsheet = self.client.open_by_key(config.GOOGLE_SHEET_EMAILS_ID)
+            
+            # Получаем лист с зарегистрированными пользователями
+            try:
+                registered_worksheet = spreadsheet.worksheet('Registered Users')
+            except gspread.WorksheetNotFound:
+                # Если листа нет, значит никто еще не регистрировался
+                logger.info("Registered Users sheet not found - no registrations yet")
+                return False
+            
+            # Получаем все email из столбца A (пропускаем заголовок)
+            registered_emails = registered_worksheet.col_values(1)[1:]
+            
+            # Проверяем, есть ли этот email в списке
+            email_exists = email.lower() in [e.lower() for e in registered_emails if e]
+            
+            if email_exists:
+                logger.info(f"Email {email} already registered")
+            else:
+                logger.info(f"Email {email} not registered yet")
+                
+            return email_exists
+            
+        except Exception as e:
+            logger.error(f"Error checking email registration: {type(e).__name__}: {e}")
+            return False
+    
+    def save_registration(self, email: str, inn: str, promo_code: str) -> bool:
+        """Сохранить данные регистрации в Google Sheets"""
+        try:
+            # Убеждаемся, что подключение установлено
+            if not self.client:
+                self.connect()
+            
+            # Открываем основную таблицу
+            spreadsheet = self.client.open_by_key(config.GOOGLE_SHEET_EMAILS_ID)
+            
+            # Получаем или создаем лист с зарегистрированными пользователями
+            try:
+                registered_worksheet = spreadsheet.worksheet('Registered Users')
+            except gspread.WorksheetNotFound:
+                # Создаем новый лист
+                registered_worksheet = spreadsheet.add_worksheet(title='Registered Users', rows=1000, cols=5)
+                
+                # Добавляем заголовки
+                headers = ['Email', 'ИНН', 'Промокод', 'Дата регистрации', 'Telegram ID']
+                registered_worksheet.update('A1:E1', [headers])
+                logger.info("Created Registered Users sheet with headers")
+            
+            # Добавляем новую запись
+            from datetime import datetime
+            current_date = datetime.now().strftime("%d.%m.%Y %H:%M")
+            
+            # Получаем следующую свободную строку
+            next_row = len(registered_worksheet.get_all_values()) + 1
+            
+            # Добавляем данные
+            new_row = [email, inn, promo_code, current_date, '']  # Telegram ID оставляем пустым пока
+            registered_worksheet.update(f'A{next_row}:E{next_row}', [new_row])
+            
+            logger.info(f"Saved registration: {email} -> {promo_code}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error saving registration: {type(e).__name__}: {e}")
+            return False
 
 
 # Глобальный экземпляр

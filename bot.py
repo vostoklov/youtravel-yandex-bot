@@ -676,6 +676,16 @@ async def process_email(message: Message, state: FSMContext):
         )
         return
     
+    # Проверка, не зарегистрирован ли уже этот email
+    if sheets.check_email_already_registered(email):
+        await message.answer(
+            f"⚠️ Email <code>{email}</code> уже зарегистрирован в системе.\n\n"
+            f"Один email может получить только один промокод.\n\n"
+            f"Если у вас есть вопросы, свяжитесь с @maria_youtravel",
+            parse_mode="HTML"
+        )
+        return
+    
     # Сохраняем email
     await db.update_user(user_id, email=email, step='inn')
     
@@ -770,6 +780,10 @@ async def confirm_registration(callback: CallbackQuery, state: FSMContext):
         await callback.answer()
         return
     
+    # Получаем email из БД
+    user_data = await db.get_user(user_id)
+    email = user_data.get('email') if user_data else None
+    
     # Сохраняем в БД
     await db.update_user(
         user_id,
@@ -778,6 +792,10 @@ async def confirm_registration(callback: CallbackQuery, state: FSMContext):
         step='completed',
         completed_at=datetime.now()
     )
+    
+    # Сохраняем в Google Sheets
+    if email:
+        sheets.save_registration(email, inn, promo_code)
     
     # Очищаем состояние
     await state.clear()
