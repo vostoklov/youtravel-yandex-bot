@@ -609,6 +609,9 @@ async def cmd_reset(message: Message, state: FSMContext):
         
         logger.info(f"Deleting user {user_id} from database...")
         
+        # Получаем email пользователя перед удалением
+        user_email = user.get('email') if user else None
+        
         async with db.pool.acquire() as conn:
             result = await conn.execute(
                 "DELETE FROM users WHERE user_id = $1",
@@ -616,6 +619,11 @@ async def cmd_reset(message: Message, state: FSMContext):
             )
         
         logger.info(f"✓ User {user_id} deleted: {result}")
+        
+        # Удаляем запись из Google Sheets, если есть email
+        if user_email:
+            sheets.remove_registration(user_email)
+            logger.info(f"✓ Registration removed from Google Sheets for email: {user_email}")
         
         # Очищаем состояние FSM
         await state.clear()

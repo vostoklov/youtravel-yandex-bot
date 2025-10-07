@@ -277,8 +277,8 @@ class SheetsManager:
             # Получаем все email из столбца A (пропускаем заголовок)
             registered_emails = registered_worksheet.col_values(1)[1:]
             
-            # Проверяем, есть ли этот email в списке
-            email_exists = email.lower() in [e.lower() for e in registered_emails if e]
+            # Фильтруем пустые значения и проверяем, есть ли этот email в списке
+            email_exists = email.lower() in [e.lower() for e in registered_emails if e and e.strip()]
             
             if email_exists:
                 logger.info(f"Email {email} already registered")
@@ -329,6 +329,42 @@ class SheetsManager:
             
         except Exception as e:
             logger.error(f"Error saving registration: {type(e).__name__}: {e}")
+            return False
+    
+    def remove_registration(self, email: str) -> bool:
+        """Удалить запись регистрации из Google Sheets"""
+        try:
+            # Убеждаемся, что подключение установлено
+            if not self.client:
+                self.connect()
+            
+            # Открываем основную таблицу
+            spreadsheet = self.client.open_by_key(config.GOOGLE_SHEET_EMAILS_ID)
+            
+            # Получаем лист с зарегистрированными пользователями
+            try:
+                registered_worksheet = spreadsheet.worksheet('Registered Users')
+            except gspread.WorksheetNotFound:
+                logger.info("Registered Users sheet not found - nothing to remove")
+                return True
+            
+            # Получаем все данные
+            all_data = registered_worksheet.get_all_values()
+            
+            # Ищем строку с нужным email
+            for i, row in enumerate(all_data[1:], 2):  # Пропускаем заголовок
+                if len(row) >= 1 and row[0].strip().lower() == email.lower():
+                    # Удаляем строку (заменяем на пустые значения)
+                    empty_row = ['', '', '', '', '']
+                    registered_worksheet.update(f'A{i}:E{i}', [empty_row])
+                    logger.info(f"Removed registration for email: {email}")
+                    return True
+            
+            logger.info(f"Email {email} not found in registered users")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error removing registration: {type(e).__name__}: {e}")
             return False
 
 
