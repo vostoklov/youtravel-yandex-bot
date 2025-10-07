@@ -849,11 +849,7 @@ async def confirm_registration(callback: CallbackQuery, state: FSMContext):
             parse_mode="HTML"
         )
     
-    # Показываем главное меню
-    await callback.message.answer(
-        "📱 Главное меню:",
-        reply_markup=get_main_menu()
-    )
+    # Главное меню не показываем - пользователь уже получил всю информацию
     
     # Уведомляем админов о завершенной регистрации
     await reminders.send_completion_notification(user_id, user['email'], promo_code)
