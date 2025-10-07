@@ -153,11 +153,17 @@ class SheetsManager:
         try:
             logger.info("Getting available promo code from promos sheet...")
             
-            # Открываем таблицу с промокодами (не emails!)
-            promo_sheet = self.client.open_by_key(config.GOOGLE_SHEET_PROMOS_ID)
-            promo_worksheet = promo_sheet.sheet1
+            # Открываем основную таблицу
+            spreadsheet = self.client.open_by_key(config.GOOGLE_SHEET_EMAILS_ID)
             
-            logger.info(f"Opened promo sheet: {promo_sheet.title}")
+            # Получаем лист с промокодами
+            try:
+                promo_worksheet = spreadsheet.worksheet('Promos')
+            except gspread.WorksheetNotFound:
+                logger.error("Promos sheet not found")
+                return None
+            
+            logger.info(f"Opened promo sheet: {promo_worksheet.title}")
             
             # Получаем все промокоды из колонки A (пропускаем заголовок)
             promo_codes = promo_worksheet.col_values(1)[1:]
@@ -182,9 +188,15 @@ class SheetsManager:
     def get_available_promo_codes(self) -> list:
         """Получить все доступные промокоды"""
         try:
-            # Открываем таблицу с промокодами
-            promo_sheet = self.client.open_by_key(config.GOOGLE_SHEET_PROMOS_ID)
-            promo_worksheet = promo_sheet.sheet1
+            # Открываем основную таблицу
+            spreadsheet = self.client.open_by_key(config.GOOGLE_SHEET_EMAILS_ID)
+            
+            # Получаем лист с промокодами
+            try:
+                promo_worksheet = spreadsheet.worksheet('Promos')
+            except gspread.WorksheetNotFound:
+                logger.error("Promos sheet not found")
+                return []
             
             # Получаем все промокоды из колонки A (пропускаем заголовок)
             promo_codes = promo_worksheet.col_values(1)[1:]
