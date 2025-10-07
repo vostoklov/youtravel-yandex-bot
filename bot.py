@@ -13,7 +13,7 @@ from datetime import datetime
 import config
 from database import db
 from sheets import sheets
-from keyboards import get_main_menu, get_confirmation_keyboard, remove_keyboard, get_support_keyboard
+from keyboards import get_main_menu, get_confirmation_keyboard, remove_keyboard
 from utils import validate_email, normalize_email, validate_inn, normalize_inn, mask_email, mask_inn
 from monitoring import monitoring
 from reminders import reminders
@@ -513,29 +513,19 @@ async def cmd_help(message: Message):
     )
 
 @dp.message(F.text == "💬 Поддержка")
-async def cmd_support(message: Message):
+async def cmd_support(message: Message, state: FSMContext):
     """Обработчик кнопки поддержки"""
     await message.answer(
         f"💬 <b>Поддержка</b>\n\n"
-        f"Если у вас возникли вопросы или проблемы, вы можете:\n\n"
-        f"📝 Написать сообщение в поддержку прямо здесь\n"
-        f"👤 Или связаться с @maria_youtravel напрямую",
-        reply_markup=get_support_keyboard(),
-        parse_mode="HTML"
-    )
-
-@dp.message(F.text == "📝 Написать в поддержку")
-async def start_support_chat(message: Message, state: FSMContext):
-    """Начать переписку с поддержкой"""
-    await message.answer(
-        "📝 <b>Написать в поддержку</b>\n\n"
-        "Опишите ваш вопрос или проблему, и мы обязательно поможем!\n\n"
-        "💡 Чем подробнее вы опишете ситуацию, тем быстрее мы сможем помочь.",
+        f"Опишите ваш вопрос или проблему, и мы обязательно поможем!\n\n"
+        f"💡 Чем подробнее вы опишете ситуацию, тем быстрее мы сможем помочь.\n\n"
+        f"👤 Или свяжитесь с @maria_youtravel напрямую",
         reply_markup=remove_keyboard(),
         parse_mode="HTML"
     )
     await state.set_state(SupportStates.waiting_for_support_message)
-    logger.info(f"User {message.from_user.id} started support chat")
+    logger.info(f"User {message.from_user.id} started support chat directly")
+
 
 @dp.message(F.text == "🔙 Назад в меню")
 async def back_to_menu(message: Message, state: FSMContext):
@@ -546,13 +536,6 @@ async def back_to_menu(message: Message, state: FSMContext):
         reply_markup=get_main_menu()
     )
 
-@dp.message(F.text.in_(["📝 Написать в поддержку", "💬 Поддержка"]))
-async def handle_support_menu_messages(message: Message, state: FSMContext):
-    """Обработка сообщений в меню поддержки"""
-    if message.text == "📝 Написать в поддержку":
-        await start_support_chat(message, state)
-    elif message.text == "💬 Поддержка":
-        await cmd_support(message)
 
 @dp.message(SupportStates.waiting_for_support_message)
 async def process_support_message(message: Message, state: FSMContext):
@@ -847,10 +830,15 @@ async def unknown_message(message: Message):
         # Перенаправляем в поддержку
         await message.answer(
             "💬 <b>Похоже, вам нужна помощь!</b>\n\n"
-            "Для обращения в поддержку нажмите кнопку ниже:",
-            reply_markup=get_support_keyboard(),
+            "Опишите ваш вопрос или проблему, и мы обязательно поможем!\n\n"
+            "💡 Чем подробнее вы опишете ситуацию, тем быстрее мы сможем помочь.",
+            reply_markup=remove_keyboard(),
             parse_mode="HTML"
         )
+        # Устанавливаем состояние поддержки
+        from aiogram.fsm.context import FSMContext
+        state = FSMContext(storage=dp.storage, key=message.chat.id, user=message.from_user.id)
+        await state.set_state(SupportStates.waiting_for_support_message)
         return
     
     await message.answer(

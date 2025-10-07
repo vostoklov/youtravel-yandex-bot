@@ -15,16 +15,6 @@ def get_main_menu() -> ReplyKeyboardMarkup:
     )
     return keyboard
 
-def get_support_keyboard() -> ReplyKeyboardMarkup:
-    """Клавиатура поддержки"""
-    keyboard = ReplyKeyboardMarkup(
-        keyboard=[
-            [KeyboardButton(text="📝 Написать в поддержку")],
-            [KeyboardButton(text="🔙 Назад в меню")]
-        ],
-        resize_keyboard=True
-    )
-    return keyboard
 
 def get_confirmation_keyboard() -> InlineKeyboardMarkup:
     """Клавиатура подтверждения"""
