@@ -101,9 +101,27 @@ class ReminderSystem:
             message = self.get_reminder_message(reminder_type, step)
             
             if message:
-                await self.bot.send_message(user_id, message, parse_mode="HTML")
-                await self.mark_reminder_sent(user_id, reminder_type)
-                logger.info(f"Reminder {reminder_type} sent to user {user_id}")
+                # Для напоминания через 3 дня добавляем изображение
+                if reminder_type == 'incomplete_3d':
+                    try:
+                        await self.bot.send_photo(
+                            user_id,
+                            photo="https://via.placeholder.com/1000x1000/F59E0B/FFFFFF?text=Как+работает+корпоративный+тариф",
+                            caption=message,
+                            parse_mode="HTML"
+                        )
+                        await self.mark_reminder_sent(user_id, reminder_type)
+                        logger.info(f"Reminder with image {reminder_type} sent to user {user_id}")
+                    except Exception as e:
+                        logger.error(f"Error sending reminder image to user {user_id}: {e}")
+                        # Fallback без изображения
+                        await self.bot.send_message(user_id, message, parse_mode="HTML")
+                        await self.mark_reminder_sent(user_id, reminder_type)
+                        logger.info(f"Reminder {reminder_type} sent to user {user_id}")
+                else:
+                    await self.bot.send_message(user_id, message, parse_mode="HTML")
+                    await self.mark_reminder_sent(user_id, reminder_type)
+                    logger.info(f"Reminder {reminder_type} sent to user {user_id}")
                 
         except Exception as e:
             if "chat not found" in str(e) or "bot was blocked" in str(e):
