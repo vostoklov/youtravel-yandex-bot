@@ -442,7 +442,7 @@ async def cmd_start(message: Message, state: FSMContext):
             "Промокод действует до <b>10 ноября</b>.\n\n"
             "📚 <a href=\"https://ytme.atlassian.net/wiki/spaces/helpcenter/pages/3686137866\">FAQ по партнерству</a> — подробная информация\n\n"
             "📩 Для начала введите e-mail, который вы используете в YouTravel:",
-            reply_markup=remove_keyboard(),
+            reply_markup=get_main_menu(),
             parse_mode="HTML"
         )
     except Exception as e:
@@ -460,7 +460,7 @@ async def cmd_start(message: Message, state: FSMContext):
             "Промокод действует до <b>10 ноября</b>.\n\n"
             "📚 <a href=\"https://ytme.atlassian.net/wiki/spaces/helpcenter/pages/3686137866\">FAQ по партнерству</a> — подробная информация\n\n"
             "📩 Для начала введите e-mail, который вы используете в YouTravel:",
-            reply_markup=remove_keyboard(),
+            reply_markup=get_main_menu(),
             parse_mode="HTML"
         )
     
@@ -546,7 +546,7 @@ async def cmd_support(message: Message, state: FSMContext):
         f"📚 <b>Полезные ссылки:</b>\n"
         f"• <a href=\"https://ytme.atlassian.net/wiki/spaces/helpcenter/pages/3686137866\">FAQ по партнерству</a>\n"
         f"• @maria_youtravel — прямая связь",
-        reply_markup=remove_keyboard(),
+        reply_markup=get_main_menu(),
         parse_mode="HTML"
     )
     await state.set_state(SupportStates.waiting_for_support_message)
@@ -862,7 +862,7 @@ async def confirm_registration(callback: CallbackQuery, state: FSMContext):
     # Главное меню не показываем - пользователь уже получил всю информацию
     
     # Уведомляем админов о завершенной регистрации
-    await reminders.send_completion_notification(user_id, user['email'], promo_code)
+    await reminders.send_completion_notification(user_id, email, promo_code)
     
     await callback.answer("✅ Регистрация завершена!")
     logger.info(f"User {user_id} completed registration with promo: {promo_code}")
@@ -909,7 +909,7 @@ async def unknown_message(message: Message, state: FSMContext):
             "Опишите ваш вопрос или проблему, и мы обязательно поможем!\n\n"
             "💡 Чем подробнее вы опишете ситуацию, тем быстрее мы сможем помочь.\n\n"
             "📚 <a href=\"https://ytme.atlassian.net/wiki/spaces/helpcenter/pages/3686137866\">FAQ по партнерству</a> — возможно, там есть ответ на ваш вопрос.",
-            reply_markup=remove_keyboard(),
+            reply_markup=get_main_menu(),
             parse_mode="HTML"
         )
         # Устанавливаем состояние поддержки

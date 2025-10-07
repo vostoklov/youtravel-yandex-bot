@@ -2,7 +2,8 @@
 Утилиты для валидации и форматирования
 """
 import re
-from typing import Optional
+import asyncio
+from typing import Optional, Dict, Any
 
 def validate_email(email: str) -> bool:
     """Валидация email"""
@@ -14,9 +15,40 @@ def normalize_email(email: str) -> str:
     return email.lower().strip()
 
 def validate_inn(inn: str) -> bool:
-    """Валидация ИНН (10 или 12 цифр)"""
+    """Базовая валидация ИНН (10 или 12 цифр)"""
     inn = inn.strip()
     return inn.isdigit() and len(inn) in [10, 12]
+
+async def validate_inn_with_fns(inn: str) -> Dict[str, Any]:
+    """
+    Расширенная валидация ИНН с проверкой через ФНС API
+    
+    Args:
+        inn: ИНН для проверки
+        
+    Returns:
+        Dict с результатами валидации:
+        - valid: bool - валидный ли ИНН
+        - found: bool - найден ли в базе ФНС
+        - company_info: dict - информация о компании (если найдена)
+        - error: str - сообщение об ошибке (если есть)
+    """
+    try:
+        from fns_api import validate_inn_with_fns as fns_validate
+        return await fns_validate(inn)
+    except ImportError:
+        # Fallback к базовой валидации если ФНС API недоступен
+        return {
+            'valid': validate_inn(inn),
+            'found': False,
+            'error': 'ФНС API недоступен, используется базовая валидация'
+        }
+    except Exception as e:
+        return {
+            'valid': validate_inn(inn),
+            'found': False,
+            'error': f'Ошибка при проверке ИНН: {str(e)}'
+        }
 
 def normalize_inn(inn: str) -> str:
     """Нормализация ИНН (только цифры)"""
