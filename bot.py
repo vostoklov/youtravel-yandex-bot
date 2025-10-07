@@ -120,7 +120,8 @@ async def cmd_admin_users(message: Message):
     for user in users:
         status = "✅" if user['completed_at'] else "⏳"
         date = user['created_at'].strftime("%d.%m %H:%M")
-        text += f"{status} ID: {user['user_id']}\n"
+        username = f" @{user['telegram_username']}" if user['telegram_username'] else ""
+        text += f"{status} ID: {user['user_id']}{username}\n"
         if user['email']:
             text += f"   📧 {mask_email(user['email'])}\n"
         if user['inn']:
