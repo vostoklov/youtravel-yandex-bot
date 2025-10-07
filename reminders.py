@@ -76,7 +76,7 @@ class ReminderSystem:
             time_since_creation = datetime.now() - created_at
             minutes_since = int(time_since_creation.total_seconds() / 60)
             
-            # Определяем тип напоминания
+            # Определяем тип напоминания (отправляем самое подходящее)
             reminder_type = None
             if minutes_since >= self.reminder_intervals['incomplete_3d']:
                 reminder_type = 'incomplete_3d'

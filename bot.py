@@ -66,7 +66,8 @@ async def cmd_admin(message: Message):
         f"• /admin_reset user_id - сбросить пользователя\n"
         f"• /admin_promos - проверить промокоды\n"
         f"• /admin_monitor - мониторинг системы\n"
-        f"• /admin_reminders - управление напоминаниями",
+        f"• /admin_reminders - управление напоминаниями\n"
+        f"• /admin_message user_id текст - отправить сообщение",
         parse_mode="HTML"
     )
 
@@ -315,6 +316,38 @@ async def cmd_admin_reminders(message: Message):
         
     except Exception as e:
         await message.answer(f"❌ Ошибка получения статистики напоминаний: {e}")
+
+
+@dp.message(Command("admin_message"))
+async def cmd_admin_message(message: Message):
+    """Админ: отправить сообщение пользователю"""
+    if not is_admin(message.from_user.id):
+        return
+    
+    try:
+        # Парсим команду: /admin_message user_id текст_сообщения
+        parts = message.text.split(' ', 2)
+        if len(parts) < 3:
+            await message.answer(
+                "❌ Неверный формат команды.\n"
+                "Использование: /admin_message user_id текст_сообщения\n"
+                "Пример: /admin_message 229392200 Привет! Заверши регистрацию."
+            )
+            return
+        
+        user_id = int(parts[1])
+        text = parts[2]
+        
+        # Отправляем сообщение
+        await bot.send_message(user_id, text, parse_mode="HTML")
+        await message.answer(f"✅ Сообщение отправлено пользователю {user_id}")
+        
+    except ValueError:
+        await message.answer("❌ Неверный user_id. Должен быть числом.")
+    except Exception as e:
+        logger.error(f"Error sending admin message: {e}")
+        await message.answer(f"❌ Ошибка при отправке сообщения: {e}")
+
 
 # ============================================================================
 # КОМАНДЫ И МЕНЮ
