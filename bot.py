@@ -889,7 +889,7 @@ async def unknown_message(message: Message, state: FSMContext):
     text = message.text.lower()
     current_state = await state.get_state()
     
-    # Если пользователь в процессе регистрации, не обрабатываем как неизвестное сообщение
+    # Если пользователь в процессе регистрации или поддержки, не обрабатываем как неизвестное сообщение
     if current_state in [
         'RegistrationStates:waiting_for_inn',
         'RegistrationStates:waiting_for_legal_entity', 
