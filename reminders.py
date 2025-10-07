@@ -4,6 +4,7 @@
 import asyncio
 import logging
 from datetime import datetime, timedelta
+import time
 from typing import Dict, Any, List
 import config
 from database import db
@@ -106,7 +107,7 @@ class ReminderSystem:
                     try:
                         await self.bot.send_photo(
                             user_id,
-                            photo="https://raw.githubusercontent.com/vostoklov/youtravel-yandex-bot/main/images/reminder_card.jpg",
+                            photo="https://raw.githubusercontent.com/vostoklov/youtravel-yandex-bot/main/images/reminder_card.jpg?v=" + str(int(time.time())),
                             caption=message,
                             parse_mode="HTML"
                         )
