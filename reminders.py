@@ -334,5 +334,48 @@ Email: {email}
         except Exception as e:
             logger.error(f"Error sending completion notification: {e}")
 
+    async def send_new_user_notification(self, user_id: int, message: str):
+        """Отправка уведомления о новом пользователе"""
+        try:
+            notification = f"""
+🆕 <b>Новый пользователь!</b>
+
+👤 ID: {user_id}
+📝 Сообщение: {message}
+📅 Время: {datetime.now().strftime('%d.%m.%Y %H:%M')}
+"""
+            
+            # Отправляем всем админам
+            for admin_id in config.ADMIN_USER_IDS:
+                try:
+                    await self.bot.send_message(admin_id, notification, parse_mode="HTML")
+                except Exception as e:
+                    logger.error(f"Failed to send new user notification to admin {admin_id}: {e}")
+                    
+        except Exception as e:
+            logger.error(f"Error sending new user notification: {e}")
+
+    async def send_completion_notification(self, user_id: int, email: str, promo_code: str):
+        """Отправка уведомления о завершенной регистрации"""
+        try:
+            notification = f"""
+✅ <b>Регистрация завершена!</b>
+
+👤 Пользователь: {user_id}
+📧 Email: {email}
+🎟️ Промокод: {promo_code}
+📅 Время: {datetime.now().strftime('%d.%m.%Y %H:%M')}
+"""
+            
+            # Отправляем всем админам
+            for admin_id in config.ADMIN_USER_IDS:
+                try:
+                    await self.bot.send_message(admin_id, notification, parse_mode="HTML")
+                except Exception as e:
+                    logger.error(f"Failed to send completion notification to admin {admin_id}: {e}")
+                    
+        except Exception as e:
+            logger.error(f"Error sending completion notification: {e}")
+
 # Глобальный экземпляр
 reminders = ReminderSystem()
