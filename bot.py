@@ -546,6 +546,14 @@ async def back_to_menu(message: Message, state: FSMContext):
         reply_markup=get_main_menu()
     )
 
+@dp.message(F.text.in_(["📝 Написать в поддержку", "💬 Поддержка"]))
+async def handle_support_menu_messages(message: Message, state: FSMContext):
+    """Обработка сообщений в меню поддержки"""
+    if message.text == "📝 Написать в поддержку":
+        await start_support_chat(message, state)
+    elif message.text == "💬 Поддержка":
+        await cmd_support(message)
+
 @dp.message(SupportStates.waiting_for_support_message)
 async def process_support_message(message: Message, state: FSMContext):
     """Обработка сообщения в поддержку"""
@@ -834,7 +842,7 @@ async def unknown_message(message: Message):
     text = message.text.lower()
     
     # Проверяем, не является ли это сообщением в поддержку
-    support_keywords = ['поддержка', 'помощь', 'проблема', 'вопрос', 'ошибка', 'не работает', 'не получается']
+    support_keywords = ['поддержка', 'помощь', 'проблема', 'вопрос', 'ошибка', 'не работает', 'не получается', 'тестовое сообщение']
     if any(keyword in text for keyword in support_keywords):
         # Перенаправляем в поддержку
         await message.answer(
