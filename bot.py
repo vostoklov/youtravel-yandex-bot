@@ -664,12 +664,12 @@ async def process_email(message: Message, state: FSMContext):
     # Нормализация
     email = normalize_email(email)
     
-    # Проверка наличия в базе YouTravel
+    # Проверка наличия в базе верифицированных ТЭ
     if not sheets.check_email_exists(email):
         await message.answer(
-            f"❌ Email <code>{email}</code> не найден в базе YouTravel.\n\n"
+            f"❌ Email <code>{email}</code> не найден в базе верифицированных ТЭ.\n\n"
             f"Убедитесь, что вы:\n"
-            f"• Зарегистрированы на YouTravel.me\n"
+            f"• Верифицированный ТЭ YouTravel\n"
             f"• Ввели email правильно\n\n"
             f"Попробуйте ещё раз или свяжитесь с @maria_youtravel",
             parse_mode="HTML"

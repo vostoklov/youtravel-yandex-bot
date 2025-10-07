@@ -139,19 +139,13 @@ class SheetsManager:
             raise
     
     def check_email_exists(self, email: str) -> bool:
-        """Проверка существования email в таблице YouTravel и базе ТЭ"""
+        """Проверка существования email в базе верифицированных ТЭ"""
         try:
             # Убеждаемся, что подключение установлено
             if not self.client:
                 self.connect()
             
-            # Проверяем в базе YouTravel
-            youtravel_emails = self.worksheet.col_values(1)[1:]
-            if email.lower() in [e.lower() for e in youtravel_emails if e]:
-                logger.info(f"Email {email} found in YouTravel database")
-                return True
-            
-            # Проверяем в базе верифицированных ТЭ (наш лист)
+            # Проверяем только в базе верифицированных ТЭ
             try:
                 te_worksheet = self.client.open_by_key(config.GOOGLE_SHEET_EMAILS_ID).worksheet('Verified TE')
                 
@@ -161,11 +155,13 @@ class SheetsManager:
                 if email.lower() in [e.lower() for e in te_emails if e]:
                     logger.info(f"Email {email} found in verified TE database")
                     return True
+                else:
+                    logger.info(f"Email {email} not found in verified TE database")
+                    return False
                             
             except Exception as te_error:
-                logger.warning(f"Could not check TE database: {te_error}")
-            
-            return False
+                logger.error(f"Could not check TE database: {te_error}")
+                return False
             
         except Exception as e:
             logger.error(f"Error checking email: {e}")
