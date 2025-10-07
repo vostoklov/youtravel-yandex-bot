@@ -71,6 +71,7 @@ async def cmd_admin(message: Message):
         f"• /admin_promos - проверить промокоды\n"
         f"• /admin_monitor - мониторинг системы\n"
         f"• /admin_reminders - управление напоминаниями\n"
+        f"• /admin_clear - очистить базу данных\n"
         f"• /admin_message user_id текст - отправить сообщение\n"
         f"• /admin_reply user_id текст - ответить пользователю",
         parse_mode="HTML"
@@ -926,6 +927,46 @@ def is_admin(user_id: int) -> bool:
     return result
 
 # Удалены дублирующие обработчики
+
+@dp.message(Command("admin_clear"))
+async def cmd_admin_clear(message: Message):
+    """Очистка базы данных (только для админов)"""
+    user_id = message.from_user.id
+    
+    # Проверяем права администратора
+    if not is_admin(user_id):
+        await message.answer("❌ У вас нет прав администратора.")
+        return
+    
+    try:
+        # Получаем статистику ДО очистки
+        stats_before = await db.get_stats()
+        
+        # Очищаем таблицы
+        async with db.pool.acquire() as conn:
+            await conn.execute('DELETE FROM user_reminders')
+            await conn.execute('DELETE FROM users')
+        
+        # Получаем статистику ПОСЛЕ очистки
+        stats_after = await db.get_stats()
+        
+        await message.answer(
+            f"🗑️ <b>База данных очищена!</b>\n\n"
+            f"📊 <b>До очистки:</b>\n"
+            f"• Пользователей: {stats_before['total_users']}\n"
+            f"• Завершили: {stats_before['completed_users']}\n\n"
+            f"📊 <b>После очистки:</b>\n"
+            f"• Пользователей: {stats_after['total_users']}\n"
+            f"• Завершили: {stats_after['completed_users']}\n\n"
+            f"✅ База данных готова к запуску!",
+            parse_mode="HTML"
+        )
+        
+        logger.info(f"Admin {user_id} cleared database")
+        
+    except Exception as e:
+        logger.error(f"Error clearing database: {e}")
+        await message.answer(f"❌ Ошибка при очистке базы данных: {e}")
 
 # ============================================================================
 # ЗАПУСК БОТА
