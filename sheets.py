@@ -172,6 +172,10 @@ class SheetsManager:
         try:
             logger.info("Getting available promo code from promos sheet...")
             
+            # Убеждаемся, что подключение установлено
+            if not self.client:
+                self.connect()
+            
             # Открываем основную таблицу
             spreadsheet = self.client.open_by_key(config.GOOGLE_SHEET_EMAILS_ID)
             
@@ -184,16 +188,27 @@ class SheetsManager:
             
             logger.info(f"Opened promo sheet: {promo_worksheet.title}")
             
-            # Получаем все промокоды из колонки A (пропускаем заголовок)
-            promo_codes = promo_worksheet.col_values(1)[1:]
+            # Получаем все данные (промокоды и статусы)
+            all_data = promo_worksheet.get_all_values()
             
-            logger.info(f"Found {len(promo_codes)} promo codes")
-            
-            # Возвращаем первый непустой промокод
-            for promo in promo_codes:
-                if promo and promo.strip():
-                    logger.info(f"Returning promo code: {promo.strip()}")
-                    return promo.strip()
+            # Ищем первый доступный промокод (статус "available" или пустой)
+            for i, row in enumerate(all_data[1:], 2):  # Пропускаем заголовок
+                if len(row) >= 2:
+                    promo_code = row[0].strip()
+                    status = row[1].strip().lower() if len(row) > 1 else ""
+                    
+                    # Если промокод не пустой и статус "available" или пустой
+                    if promo_code and (status == "available" or status == ""):
+                        # Отмечаем промокод как использованный
+                        promo_worksheet.update_cell(i, 2, "used")
+                        
+                        # Записываем реальную дату выдачи
+                        from datetime import datetime
+                        current_date = datetime.now().strftime("%d.%m.%Y %H:%M")
+                        promo_worksheet.update_cell(i, 3, current_date)
+                        
+                        logger.info(f"Returning promo code: {promo_code}")
+                        return promo_code
             
             logger.warning("No available promo codes found!")
             return None
@@ -207,6 +222,10 @@ class SheetsManager:
     def get_available_promo_codes(self) -> list:
         """Получить все доступные промокоды"""
         try:
+            # Убеждаемся, что подключение установлено
+            if not self.client:
+                self.connect()
+            
             # Открываем основную таблицу
             spreadsheet = self.client.open_by_key(config.GOOGLE_SHEET_EMAILS_ID)
             
@@ -217,11 +236,21 @@ class SheetsManager:
                 logger.error("Promos sheet not found")
                 return []
             
-            # Получаем все промокоды из колонки A (пропускаем заголовок)
-            promo_codes = promo_worksheet.col_values(1)[1:]
+            # Получаем все данные
+            all_data = promo_worksheet.get_all_values()
             
-            # Фильтруем пустые значения
-            return [promo.strip() for promo in promo_codes if promo and promo.strip()]
+            # Фильтруем только доступные промокоды
+            available_promos = []
+            for row in all_data[1:]:  # Пропускаем заголовок
+                if len(row) >= 2:
+                    promo_code = row[0].strip()
+                    status = row[1].strip().lower() if len(row) > 1 else ""
+                    
+                    # Если промокод не пустой и статус "available" или пустой
+                    if promo_code and (status == "available" or status == ""):
+                        available_promos.append(promo_code)
+            
+            return available_promos
             
         except Exception as e:
             logger.error(f"Error getting promo codes: {type(e).__name__}: {e}")
