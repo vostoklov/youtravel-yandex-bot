@@ -13,7 +13,7 @@ from datetime import datetime
 import config
 from database import db
 from sheets import sheets
-from keyboards import get_main_menu, get_confirmation_keyboard, remove_keyboard
+from keyboards import get_main_menu, get_confirmation_keyboard, remove_keyboard, get_support_keyboard
 from utils import validate_email, normalize_email, validate_inn, normalize_inn, mask_email, mask_inn
 from monitoring import monitoring
 from reminders import reminders
@@ -30,6 +30,9 @@ class RegistrationStates(StatesGroup):
     waiting_for_email = State()
     waiting_for_inn = State()
     waiting_for_confirmation = State()
+
+class SupportStates(StatesGroup):
+    waiting_for_support_message = State()
 
 # Bot and Dispatcher
 bot = Bot(token=config.BOT_TOKEN)
@@ -67,7 +70,8 @@ async def cmd_admin(message: Message):
         f"• /admin_promos - проверить промокоды\n"
         f"• /admin_monitor - мониторинг системы\n"
         f"• /admin_reminders - управление напоминаниями\n"
-        f"• /admin_message user_id текст - отправить сообщение",
+        f"• /admin_message user_id текст - отправить сообщение\n"
+        f"• /admin_reply user_id текст - ответить пользователю",
         parse_mode="HTML"
     )
 
@@ -350,6 +354,46 @@ async def cmd_admin_message(message: Message):
         await message.answer(f"❌ Ошибка при отправке сообщения: {e}")
 
 
+@dp.message(Command("admin_reply"))
+async def cmd_admin_reply(message: Message):
+    """Админ: ответить пользователю от имени поддержки"""
+    if not is_admin(message.from_user.id):
+        return
+    
+    try:
+        # Парсим команду: /admin_reply user_id текст_ответа
+        parts = message.text.split(' ', 2)
+        if len(parts) < 3:
+            await message.answer(
+                "❌ Неверный формат команды.\n"
+                "Использование: /admin_reply user_id текст_ответа\n"
+                "Пример: /admin_reply 229392200 Спасибо за обращение! Мы поможем вам."
+            )
+            return
+        
+        user_id = int(parts[1])
+        reply_text = parts[2]
+        
+        # Отправляем ответ от имени поддержки
+        support_reply = f"""
+💬 <b>Ответ от поддержки</b>
+
+{reply_text}
+
+---
+👤 Поддержка YouTravel × Яндекс.Путешествия
+"""
+        
+        await bot.send_message(user_id, support_reply, parse_mode="HTML")
+        await message.answer(f"✅ Ответ отправлен пользователю {user_id}")
+        
+    except ValueError:
+        await message.answer("❌ Неверный user_id. Должен быть числом.")
+    except Exception as e:
+        logger.error(f"Error sending admin reply: {e}")
+        await message.answer(f"❌ Ошибка при отправке ответа: {e}")
+
+
 # ============================================================================
 # КОМАНДЫ И МЕНЮ
 # ============================================================================
@@ -473,11 +517,72 @@ async def cmd_support(message: Message):
     """Обработчик кнопки поддержки"""
     await message.answer(
         f"💬 <b>Поддержка</b>\n\n"
-        f"Если у вас возникли вопросы или проблемы, напишите:\n"
-        f"👤 @{config.SUPPORT_USERNAME}",
+        f"Если у вас возникли вопросы или проблемы, вы можете:\n\n"
+        f"📝 Написать сообщение в поддержку прямо здесь\n"
+        f"👤 Или связаться с @maria_youtravel напрямую",
+        reply_markup=get_support_keyboard(),
+        parse_mode="HTML"
+    )
+
+@dp.message(F.text == "📝 Написать в поддержку")
+async def start_support_chat(message: Message, state: FSMContext):
+    """Начать переписку с поддержкой"""
+    await message.answer(
+        "📝 <b>Написать в поддержку</b>\n\n"
+        "Опишите ваш вопрос или проблему, и мы обязательно поможем!\n\n"
+        "💡 Чем подробнее вы опишете ситуацию, тем быстрее мы сможем помочь.",
+        reply_markup=remove_keyboard(),
+        parse_mode="HTML"
+    )
+    await state.set_state(SupportStates.waiting_for_support_message)
+    logger.info(f"User {message.from_user.id} started support chat")
+
+@dp.message(F.text == "🔙 Назад в меню")
+async def back_to_menu(message: Message, state: FSMContext):
+    """Вернуться в главное меню"""
+    await state.clear()
+    await message.answer(
+        "📱 Главное меню:",
+        reply_markup=get_main_menu()
+    )
+
+@dp.message(SupportStates.waiting_for_support_message)
+async def process_support_message(message: Message, state: FSMContext):
+    """Обработка сообщения в поддержку"""
+    user_id = message.from_user.id
+    username = message.from_user.username
+    user_text = message.text
+    
+    # Отправляем сообщение админам
+    support_message = f"""
+🆘 <b>Новое сообщение в поддержку</b>
+
+👤 <b>Пользователь:</b> {user_id}
+📝 <b>Username:</b> @{username if username else 'не указан'}
+💬 <b>Сообщение:</b>
+{user_text}
+
+📅 <b>Время:</b> {datetime.now().strftime('%d.%m.%Y %H:%M')}
+"""
+    
+    # Отправляем всем админам
+    for admin_id in config.ADMIN_USER_IDS:
+        try:
+            await bot.send_message(admin_id, support_message, parse_mode="HTML")
+        except Exception as e:
+            logger.error(f"Error sending support message to admin {admin_id}: {e}")
+    
+    # Подтверждаем пользователю
+    await message.answer(
+        "✅ <b>Сообщение отправлено!</b>\n\n"
+        "Мы получили ваше обращение и обязательно ответим в ближайшее время.\n\n"
+        "⏰ Обычно мы отвечаем в течение 1-2 часов в рабочее время.",
         reply_markup=get_main_menu(),
         parse_mode="HTML"
     )
+    
+    await state.clear()
+    logger.info(f"Support message from user {user_id} sent to admins")
 
 @dp.message(Command("reset"))
 async def cmd_reset(message: Message, state: FSMContext):
@@ -488,7 +593,7 @@ async def cmd_reset(message: Message, state: FSMContext):
     if not is_admin(user_id):
         await message.answer(
             "❌ У вас нет прав для сброса регистрации.\n"
-            "Обратитесь к администратору для помощи."
+            "Обратитесь к @maria_youtravel для помощи."
         )
         return
     
@@ -541,7 +646,7 @@ async def cmd_reset(message: Message, state: FSMContext):
         await message.answer(
             f"❌ Ошибка при сбросе регистрации.\n\n"
             f"Ошибка: {type(e).__name__}\n"
-            f"Попробуйте ещё раз или свяжитесь с @{config.SUPPORT_USERNAME}",
+            f"Попробуйте ещё раз или свяжитесь с @maria_youtravel",
             reply_markup=get_main_menu()
         )
 
@@ -573,7 +678,7 @@ async def process_email(message: Message, state: FSMContext):
             f"Убедитесь, что вы:\n"
             f"• Зарегистрированы на YouTravel.me\n"
             f"• Ввели email правильно\n\n"
-            f"Попробуйте ещё раз или свяжитесь с @{config.SUPPORT_USERNAME}",
+            f"Попробуйте ещё раз или свяжитесь с @maria_youtravel",
             parse_mode="HTML"
         )
         return
@@ -621,7 +726,7 @@ async def process_inn(message: Message, state: FSMContext):
         await message.answer(
             f"❌ ИНН <code>{mask_inn(inn)}</code> уже зарегистрирован.\n\n"
             f"Каждая компания может зарегистрироваться только один раз.\n"
-            f"Если это ошибка, свяжитесь с @{config.SUPPORT_USERNAME}",
+            f"Если это ошибка, свяжитесь с @maria_youtravel",
             parse_mode="HTML"
         )
         return
@@ -666,7 +771,7 @@ async def confirm_registration(callback: CallbackQuery, state: FSMContext):
         await callback.message.edit_text(
             "❌ <b>Ошибка</b>\n\n"
             "К сожалению, промокоды временно закончились.\n"
-            f"Пожалуйста, свяжитесь с @{config.SUPPORT_USERNAME}",
+            f"Пожалуйста, свяжитесь с @maria_youtravel",
             parse_mode="HTML"
         )
         await callback.answer()
