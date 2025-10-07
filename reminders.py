@@ -106,7 +106,7 @@ class ReminderSystem:
                     try:
                         await self.bot.send_photo(
                             user_id,
-                            photo="https://via.placeholder.com/1000x1000/F59E0B/FFFFFF?text=Как+работает+корпоративный+тариф",
+                            photo="https://raw.githubusercontent.com/vostoklov/youtravel-yandex-bot/main/images/reminder_card.jpg",
                             caption=message,
                             parse_mode="HTML"
                         )

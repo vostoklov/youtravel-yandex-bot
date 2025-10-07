@@ -430,7 +430,7 @@ async def cmd_start(message: Message, state: FSMContext):
     # Отправляем баннер "Преимущества для бизнеса"
     try:
         await message.answer_photo(
-            photo="https://via.placeholder.com/1000x1000/8B5CF6/FFFFFF?text=Преимущества+для+бизнеса",
+            photo="https://raw.githubusercontent.com/vostoklov/youtravel-yandex-bot/main/images/welcome_banner.jpg",
             caption="👋 <b>Привет!</b>\n"
             "Это бот для регистрации в партнёрской программе <b>YouTravel × Яндекс.Путешествия</b>.\n\n"
             "Теперь организаторы туров могут бронировать размещение по корпоративным тарифам Яндекс.Путешествий —\n"
@@ -823,7 +823,7 @@ async def confirm_registration(callback: CallbackQuery, state: FSMContext):
     # Отправляем скриншот с бейджем "Корпоративный тариф"
     try:
         await callback.message.answer_photo(
-            photo="https://via.placeholder.com/1000x1000/10B981/FFFFFF?text=Корпоративный+тариф",
+            photo="https://raw.githubusercontent.com/vostoklov/youtravel-yandex-bot/main/images/completion_screenshot.jpg",
             caption=f"🎉 <b>Отлично!</b>\n"
             f"Регистрация завершена — теперь вам доступны корпоративные тарифы Яндекс.Путешествий.\n\n"
             f"🎟️ Ваш персональный промокод: <b>{promo_code}</b>\n\n"
