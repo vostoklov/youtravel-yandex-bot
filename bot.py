@@ -547,6 +547,11 @@ async def cmd_reset_user(message: Message, state: FSMContext):
         reply_markup=get_main_menu()
     )
 
+@dp.message(Command("test"))
+async def cmd_test(message: Message):
+    """Тестовая команда для проверки работы бота"""
+    await message.answer("✅ Бот работает! Время: " + str(datetime.now()))
+
 @dp.message(Command("clear"))
 async def cmd_clear_simple(message: Message):
     """Простая команда для очистки базы данных"""
@@ -1127,4 +1132,4 @@ async def main():
 if __name__ == "__main__":
     asyncio.run(main())
 
-# Force restart
+# Force restart - updated at 2025-10-08 15:50
