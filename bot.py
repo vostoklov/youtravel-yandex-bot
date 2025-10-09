@@ -72,6 +72,7 @@ async def cmd_admin(message: Message):
         f"• /admin_monitor - мониторинг системы\n"
         f"• /admin_reminders - управление напоминаниями\n"
         f"• /admin_clear - очистить базу данных\n"
+        f"• /admin_check_email email - проверить дубликаты\n"
         f"• /admin_message user_id текст - отправить сообщение\n"
         f"• /admin_reply user_id текст - ответить пользователю",
         parse_mode="HTML"
@@ -1099,6 +1100,73 @@ async def cmd_admin_clear(message: Message):
     except Exception as e:
         logger.error(f"Error clearing database: {e}")
         await message.answer(f"❌ Ошибка при очистке базы данных: {e}")
+
+@dp.message(Command("admin_check_email"))
+async def cmd_admin_check_email(message: Message):
+    """Проверка дубликатов для определенного email"""
+    user_id = message.from_user.id
+    
+    if not is_admin(user_id):
+        await message.answer("❌ У вас нет прав администратора.")
+        return
+    
+    # Извлекаем email из команды
+    parts = message.text.split(maxsplit=1)
+    if len(parts) < 2:
+        await message.answer(
+            "📧 <b>Использование:</b>\n"
+            "<code>/admin_check_email example@email.com</code>\n\n"
+            "Эта команда покажет все записи для указанного email.",
+            parse_mode="HTML"
+        )
+        return
+    
+    email = parts[1].strip()
+    
+    try:
+        async with db.pool.acquire() as conn:
+            # Получаем все записи для email
+            records = await conn.fetch(
+                """SELECT user_id, email, inn, promo_code, step, 
+                          created_at, completed_at
+                   FROM users 
+                   WHERE email = $1
+                   ORDER BY created_at""",
+                email
+            )
+            
+            if not records:
+                await message.answer(f"❌ Записей для email <code>{email}</code> не найдено.", parse_mode="HTML")
+                return
+            
+            # Формируем отчет
+            report = f"📧 <b>Проверка email:</b> <code>{email}</code>\n\n"
+            report += f"📊 <b>Найдено записей:</b> {len(records)}\n\n"
+            
+            for i, record in enumerate(records, 1):
+                report += f"<b>#{i}:</b>\n"
+                report += f"👤 User ID: <code>{record['user_id']}</code>\n"
+                report += f"🏢 ИНН: <code>{record['inn'] or 'не указан'}</code>\n"
+                report += f"🎟️ Промокод: <code>{record['promo_code'] or 'не выдан'}</code>\n"
+                report += f"📍 Этап: {record['step']}\n"
+                report += f"📅 Создан: {record['created_at'].strftime('%d.%m.%Y %H:%M')}\n"
+                if record['completed_at']:
+                    report += f"✅ Завершен: {record['completed_at'].strftime('%d.%m.%Y %H:%M')}\n"
+                report += "\n"
+            
+            if len(records) > 1:
+                report += "⚠️ <b>ВНИМАНИЕ:</b> Найдены дубликаты!\n"
+                report += "Рекомендуется оставить только одну запись.\n\n"
+                report += "Для автоматического исправления используйте Railway CLI:\n"
+                report += f"<code>railway run python fix_nzamaldinova_duplicates.py</code>"
+            else:
+                report += "✅ Дубликатов не обнаружено"
+            
+            await message.answer(report, parse_mode="HTML")
+            
+    except Exception as e:
+        logger.error(f"Error checking email: {e}")
+        await message.answer(f"❌ Ошибка: {e}")
 
 # ============================================================================
 # ОБРАБОТКА НЕИЗВЕСТНЫХ СООБЩЕНИЙ
