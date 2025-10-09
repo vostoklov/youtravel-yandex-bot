@@ -952,6 +952,22 @@ async def confirm_registration(callback: CallbackQuery, state: FSMContext):
     """Подтверждение данных и выдача промокода"""
     user_id = callback.from_user.id
     
+    # Сразу отвечаем на callback, чтобы избежать таймаута
+    try:
+        await callback.answer("⏳ Обрабатываем...")
+    except Exception as e:
+        logger.warning(f"Failed to answer callback: {e}")
+    
+    # Проверяем, не завершена ли уже регистрация (защита от двойного клика)
+    user_data = await db.get_user(user_id)
+    if user_data and user_data.get('step') == 'completed':
+        await callback.message.edit_text(
+            "✅ Вы уже завершили регистрацию!\n\n"
+            f"🎟️ Ваш промокод: <b>{user_data.get('promo_code')}</b>",
+            parse_mode="HTML"
+        )
+        return
+    
     # Получаем ИНН из состояния
     data = await state.get_data()
     inn = data.get('inn')
@@ -966,11 +982,9 @@ async def confirm_registration(callback: CallbackQuery, state: FSMContext):
             f"Пожалуйста, свяжитесь с @maria_youtravel",
             parse_mode="HTML"
         )
-        await callback.answer()
         return
     
     # Получаем email из БД
-    user_data = await db.get_user(user_id)
     email = user_data.get('email') if user_data else None
     
     # Сохраняем в БД
@@ -1002,10 +1016,15 @@ async def confirm_registration(callback: CallbackQuery, state: FSMContext):
             f"🔗 Перейдите к бронированию: <a href=\"https://travel.yandex.ru\">travel.yandex.ru</a>",
             parse_mode="HTML"
         )
+        # Удаляем старое сообщение с кнопками подтверждения
+        try:
+            await callback.message.delete()
+        except Exception:
+            pass
     except Exception as e:
         logger.error(f"Error sending completion image: {e}")
-        # Fallback без изображения
-        await callback.message.edit_text(
+        # Fallback без изображения - отправляем новое сообщение
+        await callback.message.answer(
             f"🎉 <b>Отлично!</b>\n"
             f"Регистрация завершена — теперь вам доступны корпоративные тарифы Яндекс.Путешествий.\n\n"
             f"🎟️ Ваш персональный промокод: <b>{promo_code}</b>\n\n"
@@ -1015,13 +1034,18 @@ async def confirm_registration(callback: CallbackQuery, state: FSMContext):
             f"🔗 Перейдите к бронированию: <a href=\"https://travel.yandex.ru\">travel.yandex.ru</a>",
             parse_mode="HTML"
         )
-    
-    # Главное меню не показываем - пользователь уже получил всю информацию
+        # Удаляем старое сообщение с кнопками подтверждения
+        try:
+            await callback.message.delete()
+        except Exception:
+            pass
     
     # Уведомляем админов о завершенной регистрации
-    await reminders.send_completion_notification(user_id, email, promo_code)
+    try:
+        await reminders.send_completion_notification(user_id, email, promo_code)
+    except Exception as e:
+        logger.error(f"Error sending completion notification: {e}")
     
-    await callback.answer("✅ Регистрация завершена!")
     logger.info(f"User {user_id} completed registration with promo: {promo_code}")
 
 @dp.callback_query(F.data == "confirm_no", RegistrationStates.waiting_for_confirmation)
