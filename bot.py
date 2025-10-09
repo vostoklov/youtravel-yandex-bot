@@ -73,6 +73,7 @@ async def cmd_admin(message: Message):
         f"• /admin_reminders - управление напоминаниями\n"
         f"• /admin_clear - очистить базу данных\n"
         f"• /admin_check_email email - проверить дубликаты\n"
+        f"• /admin_fix_user user_id inn promo - исправить данные\n"
         f"• /admin_message user_id текст - отправить сообщение\n"
         f"• /admin_reply user_id текст - ответить пользователю",
         parse_mode="HTML"
@@ -1166,6 +1167,79 @@ async def cmd_admin_check_email(message: Message):
             
     except Exception as e:
         logger.error(f"Error checking email: {e}")
+        await message.answer(f"❌ Ошибка: {e}")
+
+@dp.message(Command("admin_fix_user"))
+async def cmd_admin_fix_user(message: Message):
+    """Исправление данных пользователя (ИНН и промокод)"""
+    user_id = message.from_user.id
+    
+    if not is_admin(user_id):
+        await message.answer("❌ У вас нет прав администратора.")
+        return
+    
+    # Формат: /admin_fix_user user_id inn promo_code
+    parts = message.text.split()
+    if len(parts) < 4:
+        await message.answer(
+            "📝 <b>Использование:</b>\n"
+            "<code>/admin_fix_user user_id inn promo_code</code>\n\n"
+            "<b>Пример:</b>\n"
+            "<code>/admin_fix_user 2200122 7718718506 YOUTRAVELGDLWN7IKDV</code>\n\n"
+            "Эта команда обновит ИНН и промокод для пользователя.",
+            parse_mode="HTML"
+        )
+        return
+    
+    target_user_id = int(parts[1])
+    inn = parts[2]
+    promo_code = parts[3]
+    
+    try:
+        async with db.pool.acquire() as conn:
+            # Получаем текущие данные
+            current = await conn.fetchrow(
+                'SELECT * FROM users WHERE user_id = $1',
+                target_user_id
+            )
+            
+            if not current:
+                await message.answer(f"❌ Пользователь {target_user_id} не найден.")
+                return
+            
+            # Обновляем
+            await conn.execute(
+                """UPDATE users 
+                   SET inn = $1, promo_code = $2
+                   WHERE user_id = $3""",
+                inn,
+                promo_code,
+                target_user_id
+            )
+            
+            # Проверяем результат
+            updated = await conn.fetchrow(
+                'SELECT * FROM users WHERE user_id = $1',
+                target_user_id
+            )
+            
+            await message.answer(
+                f"✅ <b>Данные обновлены!</b>\n\n"
+                f"👤 User ID: <code>{target_user_id}</code>\n"
+                f"📧 Email: <code>{updated['email']}</code>\n\n"
+                f"<b>Было:</b>\n"
+                f"🏢 ИНН: <code>{current['inn'] or 'не указан'}</code>\n"
+                f"🎟️ Промокод: <code>{current['promo_code'] or 'не выдан'}</code>\n\n"
+                f"<b>Стало:</b>\n"
+                f"🏢 ИНН: <code>{updated['inn']}</code>\n"
+                f"🎟️ Промокод: <code>{updated['promo_code']}</code>",
+                parse_mode="HTML"
+            )
+            
+            logger.info(f"Admin {user_id} updated user {target_user_id}: inn={inn}, promo={promo_code}")
+            
+    except Exception as e:
+        logger.error(f"Error fixing user: {e}")
         await message.answer(f"❌ Ошибка: {e}")
 
 # ============================================================================
