@@ -6,13 +6,11 @@ import os
 import sys
 import asyncio
 import asyncpg
-from config import Config
+import config
 from datetime import datetime
 
 async def analyze_issue():
     """Полный анализ проблемы"""
-    config = Config()
-    
     try:
         pool = await asyncpg.create_pool(
             dsn=config.DATABASE_URL,

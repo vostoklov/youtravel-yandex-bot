@@ -7,12 +7,10 @@ import os
 import sys
 import asyncio
 import asyncpg
-from config import Config
+import config
 
 async def fix_duplicates():
     """Удаляем дубликаты, оставляем только первую запись"""
-    config = Config()
-    
     try:
         pool = await asyncpg.create_pool(
             dsn=config.DATABASE_URL,
