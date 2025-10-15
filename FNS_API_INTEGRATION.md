@@ -260,7 +260,7 @@ async with FNSAPI() as api:
 ## Контакты
 
 - **Разработчик**: YouTravel Team
-- **Поддержка**: @maria_youtravel
+- **Поддержка**: @youtravel_for_agents
 - **Документация**: Этот файл
 - **Issues**: GitHub Issues
 

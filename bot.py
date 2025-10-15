@@ -704,7 +704,7 @@ async def cmd_support(message: Message, state: FSMContext):
         f"💡 Чем подробнее вы опишете ситуацию, тем быстрее мы сможем помочь.\n\n"
         f"📚 <b>Полезные ссылки:</b>\n"
         f"• <a href=\"https://ytme.atlassian.net/wiki/spaces/helpcenter/pages/3686137866\">FAQ по партнерству</a>\n"
-        f"• @maria_youtravel — прямая связь",
+        f"• @youtravel_for_agents — прямая связь",
         reply_markup=get_main_menu(),
         parse_mode="HTML"
     )
@@ -769,7 +769,7 @@ async def cmd_reset(message: Message, state: FSMContext):
     if not is_admin(user_id):
         await message.answer(
             "❌ У вас нет прав для сброса регистрации.\n"
-            "Обратитесь к @maria_youtravel для помощи."
+            "Обратитесь к @youtravel_for_agents для помощи."
         )
         return
     
@@ -830,7 +830,7 @@ async def cmd_reset(message: Message, state: FSMContext):
         await message.answer(
             f"❌ Ошибка при сбросе регистрации.\n\n"
             f"Ошибка: {type(e).__name__}\n"
-            f"Попробуйте ещё раз или свяжитесь с @maria_youtravel",
+            f"Попробуйте ещё раз или свяжитесь с @youtravel_for_agents",
             reply_markup=get_main_menu()
         )
 
@@ -862,7 +862,7 @@ async def process_email(message: Message, state: FSMContext):
             f"Убедитесь, что вы:\n"
             f"• Верифицированный ТЭ YouTravel\n"
             f"• Ввели email правильно\n\n"
-            f"Попробуйте ещё раз или свяжитесь с @maria_youtravel",
+            f"Попробуйте ещё раз или свяжитесь с @youtravel_for_agents",
             parse_mode="HTML"
         )
         return
@@ -872,7 +872,7 @@ async def process_email(message: Message, state: FSMContext):
         await message.answer(
             f"⚠️ Email <code>{email}</code> уже зарегистрирован в системе.\n\n"
             f"Один email может получить только один промокод.\n\n"
-            f"Если у вас есть вопросы, свяжитесь с @maria_youtravel",
+            f"Если у вас есть вопросы, свяжитесь с @youtravel_for_agents",
             parse_mode="HTML"
         )
         return
@@ -920,7 +920,7 @@ async def process_inn(message: Message, state: FSMContext):
         await message.answer(
             f"❌ ИНН <code>{mask_inn(inn)}</code> уже зарегистрирован.\n\n"
             f"Каждая компания может зарегистрироваться только один раз.\n"
-            f"Если это ошибка, свяжитесь с @maria_youtravel",
+            f"Если это ошибка, свяжитесь с @youtravel_for_agents",
             parse_mode="HTML"
         )
         return
@@ -981,7 +981,7 @@ async def confirm_registration(callback: CallbackQuery, state: FSMContext):
         await callback.message.edit_text(
             "❌ <b>Ошибка</b>\n\n"
             "К сожалению, промокоды временно закончились.\n"
-            f"Пожалуйста, свяжитесь с @maria_youtravel",
+            f"Пожалуйста, свяжитесь с @youtravel_for_agents",
             parse_mode="HTML"
         )
         return
