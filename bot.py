@@ -67,6 +67,7 @@ async def cmd_admin(message: Message):
         f"🔧 <b>Команды:</b>\n"
         f"• /admin_stats - детальная статистика\n"
         f"• /admin_users - список пользователей\n"
+        f"• /admin_incomplete - пользователи в процессе регистрации\n"
         f"• /admin_reset user_id - сбросить пользователя\n"
         f"• /admin_promos - проверить промокоды\n"
         f"• /admin_monitor - мониторинг системы\n"
@@ -137,6 +138,87 @@ async def cmd_admin_users(message: Message):
         if user['promo_code']:
             text += f"   🎟️ {user['promo_code']}\n"
         text += f"   📅 {date}\n\n"
+    
+    await message.answer(text, parse_mode="HTML")
+
+@dp.message(Command("admin_incomplete"))
+async def cmd_admin_incomplete(message: Message):
+    """Список пользователей в процессе регистрации"""
+    user_id = message.from_user.id
+    
+    if not is_admin(user_id):
+        await message.answer("❌ У вас нет прав администратора.")
+        return
+    
+    # Получаем пользователей в процессе регистрации
+    async with db.pool.acquire() as conn:
+        incomplete_users = await conn.fetch('''
+            SELECT user_id, telegram_username, email, step, created_at
+            FROM users 
+            WHERE completed_at IS NULL 
+            AND step != 'start'
+            ORDER BY created_at DESC
+        ''')
+    
+    if not incomplete_users:
+        await message.answer("📝 Пользователей в процессе регистрации не найдено.")
+        return
+    
+    # Группируем по типам username
+    usernames_with_at = []
+    usernames_without_at = []
+    users_without_username = []
+    
+    for user in incomplete_users:
+        username = user['telegram_username']
+        if username:
+            usernames_with_at.append(f"@{username}")
+            usernames_without_at.append(username)
+        else:
+            users_without_username.append({
+                'user_id': user['user_id'],
+                'email': user['email'] or 'не указан',
+                'created_at': user['created_at'].strftime('%d.%m.%Y %H:%M')
+            })
+    
+    # Формируем ответ
+    text = f"👥 <b>Пользователи в процессе регистрации ({len(incomplete_users)}):</b>\n\n"
+    
+    if usernames_with_at:
+        text += "🔗 <b>С @ (для поиска в Telegram):</b>\n"
+        for username in usernames_with_at:
+            text += f"• {username}\n"
+        text += "\n"
+    
+    if usernames_without_at:
+        text += "📝 <b>Без @ (для ручного ввода):</b>\n"
+        for username in usernames_without_at:
+            text += f"• {username}\n"
+        text += "\n"
+    
+    if users_without_username:
+        text += "⚠️ <b>БЕЗ username:</b>\n"
+        for user in users_without_username:
+            text += f"• ID: {user['user_id']} | Email: {user['email']} | Дата: {user['created_at']}\n"
+        text += "\n"
+    
+    # Добавляем детальную информацию
+    text += "📋 <b>Детали:</b>\n"
+    for i, user in enumerate(incomplete_users, 1):
+        username = f"@{user['telegram_username']}" if user['telegram_username'] else "не указан"
+        email = user['email'] or 'не указан'
+        step = user['step']
+        created_at = user['created_at'].strftime('%d.%m.%Y %H:%M')
+        text += f"{i:2d}. ID: {user['user_id']} | @{username} | {email} | {step} | {created_at}\n"
+    
+    # Добавляем инструкцию
+    text += "\n📱 <b>Инструкция для отправки сообщений:</b>\n"
+    text += "1. Скопируйте список с @ из вывода выше\n"
+    text += "2. В Telegram перейдите в поиск\n"
+    text += "3. Вставьте список никнеймов (по одному)\n"
+    text += "4. Отправьте каждому сообщение:\n\n"
+    text += "Привет! Я Иван, фаундер и директор по продукту в U-Travel. Увидел, что ты начал участвовать в нашей акции с Яндекс.Путешествиями, но до конца не дошёл — не получил промокод.\n\n"
+    text += "Можешь, пожалуйста, рассказать, что остановило? Хочу понять, как сделать всё проще/понятнее, и что вообще тебе сейчас актуально. Мы реально хотим сделать эту историю удобной и полезной для тревел-экспертов — честно, очень ценю фидбек 🙌"
     
     await message.answer(text, parse_mode="HTML")
 
