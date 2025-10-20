@@ -68,6 +68,7 @@ async def cmd_admin(message: Message):
         f"• /admin_stats - детальная статистика\n"
         f"• /admin_users - список пользователей\n"
         f"• /admin_incomplete - пользователи в процессе регистрации\n"
+        f"• /admin_find username - найти пользователя по username\n"
         f"• /admin_reset user_id - сбросить пользователя\n"
         f"• /admin_promos - проверить промокоды\n"
         f"• /admin_monitor - мониторинг системы\n"
@@ -221,6 +222,72 @@ async def cmd_admin_incomplete(message: Message):
     text += "Можешь, пожалуйста, рассказать, что остановило? Хочу понять, как сделать всё проще/понятнее, и что вообще тебе сейчас актуально. Мы реально хотим сделать эту историю удобной и полезной для тревел-экспертов — честно, очень ценю фидбек 🙌"
     
     await message.answer(text, parse_mode="HTML")
+
+@dp.message(Command("admin_find"))
+async def cmd_admin_find(message: Message):
+    """Поиск пользователя по username"""
+    user_id = message.from_user.id
+    
+    if not is_admin(user_id):
+        await message.answer("❌ У вас нет прав администратора.")
+        return
+    
+    # Получаем username из сообщения
+    text = message.text
+    if not text or len(text.split()) < 2:
+        await message.answer("❌ Использование: /admin_find username\nПример: /admin_find anastasia_org")
+        return
+    
+    username = text.split()[1].replace('@', '')  # Убираем @ если есть
+    
+    try:
+        # Ищем пользователя по username
+        async with db.pool.acquire() as conn:
+            user = await conn.fetchrow('''
+                SELECT user_id, telegram_username, email, inn, step, created_at, completed_at, promo_code
+                FROM users 
+                WHERE telegram_username = $1
+                ORDER BY created_at DESC
+                LIMIT 1
+            ''', username)
+        
+        if not user:
+            await message.answer(f"❌ Пользователь @{username} не найден.")
+            return
+        
+        # Определяем статус
+        status = "✅ Завершена" if user['completed_at'] else "⏳ В процессе"
+        
+        # Определяем на каком этапе застряла
+        step = user['step']
+        if step == 'start':
+            step_status = "Только начал регистрацию"
+        elif step == 'email':
+            step_status = "Застряла на вводе email"
+        elif step == 'inn':
+            step_status = "Застряла на вводе ИНН"
+        elif step == 'confirmation':
+            step_status = "Застряла на подтверждении данных"
+        else:
+            step_status = f"Неизвестный этап - {step}"
+        
+        # Формируем ответ
+        response = f"👤 <b>Пользователь @{username}:</b>\n\n"
+        response += f"🆔 ID: {user['user_id']}\n"
+        response += f"📧 Email: {user['email'] or 'не указан'}\n"
+        response += f"🏢 ИНН: {user['inn'] or 'не указан'}\n"
+        response += f"📍 Этап: {step} - {step_status}\n"
+        response += f"📅 Дата создания: {user['created_at'].strftime('%d.%m.%Y %H:%M')}\n"
+        response += f"✅ Статус: {status}\n"
+        
+        if user['promo_code']:
+            response += f"🎟️ Промокод: {user['promo_code']}\n"
+        
+        await message.answer(response, parse_mode="HTML")
+        
+    except Exception as e:
+        logger.error(f"Error finding user: {e}")
+        await message.answer(f"❌ Ошибка при поиске пользователя: {e}")
 
 @dp.message(Command("admin_reset"))
 async def cmd_admin_reset(message: Message):
