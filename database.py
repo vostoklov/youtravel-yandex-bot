@@ -141,6 +141,19 @@ class Database:
                 "SELECT COUNT(*) FROM users WHERE promo_code IS NOT NULL"
             )
             
+            # Получаем количество доступных промокодов из Google Sheets
+            try:
+                logger.info("Getting available promos from Google Sheets...")
+                from sheets import sheets
+                available_promos_list = sheets.get_available_promo_codes()
+                available_promos = len(available_promos_list)
+                logger.info(f"Found {available_promos} available promo codes")
+            except Exception as e:
+                logger.error(f"Error getting available promos: {e}")
+                import traceback
+                logger.error(traceback.format_exc())
+                available_promos = 0
+            
             return {
                 "total_users": total,
                 "completed_users": completed,
@@ -149,7 +162,7 @@ class Database:
                 "users_last_24h": users_last_24h,
                 "completed_last_24h": completed_last_24h,
                 "promo_codes_issued": promo_codes_issued,
-                "available_promos": 0  # Будет заполнено из sheets
+                "available_promos": available_promos
             }
     
     async def get_recent_users(self, limit: int = 10) -> list:
